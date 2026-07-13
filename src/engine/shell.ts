@@ -69,6 +69,12 @@ export class GameShell {
   /** Run the 3-2-1 countdown, then hand control to the game. */
   begin(cb: ShellCallbacks): void {
     this.cb = cb;
+    // Already-hidden page: rAF is frozen and visibilitychange will never
+    // fire, so the trial would stall and then burst on return. Abort now.
+    if (document.visibilityState === 'hidden') {
+      this.abortToOverlay();
+      return;
+    }
     this.state = 'countdown';
     this.lockChrome(true);
 
@@ -120,6 +126,16 @@ export class GameShell {
     };
     await saveAttempt(attempt);
     return attempt;
+  }
+
+  /**
+   * End the session without saving an attempt here — for games that
+   * persist per-trial via saveAttempt() themselves (e.g. one attempt
+   * per F1 start). Unlocks chrome and stops visibility handling.
+   */
+  end(): void {
+    this.state = 'done';
+    this.lockChrome(false);
   }
 
   /** Game-initiated resume after a pause overlay. */

@@ -36,7 +36,7 @@ export const games: GameMeta[] = [
     scoreUnit: 'ms',
     lowerIsBetter: true,
     formatScore: (v) => `${Math.round(v)} ms`,
-    implemented: false,
+    implemented: true,
     difficulties: [{ id: 'standard', label: d.normal }],
   },
   {

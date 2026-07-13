@@ -47,6 +47,9 @@ const meta = getGame(Astro.params.game!);
   </main>
 
   <script>
+    import { bindIntro } from '../../engine/mount';
+    import type { PlayContext } from '../../engine/mount';
+
     // difficulty selector toggle (game modules read the pressed button)
     const row = document.getElementById('difficulty-row');
     row?.addEventListener('pointerdown', (e) => {
@@ -57,5 +60,12 @@ const meta = getGame(Astro.params.game!);
         b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
       }
     });
+
+    // lazy-load only this page's game module (Vite code-splits each)
+    const loaders: Record<string, () => Promise<{ run: (ctx: PlayContext) => void }>> = {
+      'reaction-f1': () => import('../../games/reaction-f1/game'),
+    };
+    const gameId = document.getElementById('intro')!.dataset.game!;
+    loaders[gameId]?.().then((mod) => bindIntro(gameId, mod.run));
   </script>
 </Layout>

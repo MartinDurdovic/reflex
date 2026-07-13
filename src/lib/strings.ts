@@ -31,6 +31,8 @@ export const strings = {
     personalBest: 'Personal best',
     average: 'Your average',
     vsAverage: 'vs average',
+    best: 'Best',
+    consistency: 'Consistency',
     history: 'Last 20 attempts',
     newBest: 'New personal best!',
     latencyFootnote:
@@ -66,6 +68,14 @@ export const strings = {
       name: 'Lights Out',
       short: 'Reaction time',
       how: 'Five columns of red lights come on one by one. When they all go out — tap as fast as you can. Tap too early and it is a jump start. A session is 5 starts.',
+      ui: {
+        startCounter: (n: number, total: number) => `Start ${n} / ${total}`,
+        wait: 'Wait for lights out…',
+        jumpStart: 'JUMP START',
+        jumpStarts: 'Jump starts',
+        sessionBest: 'Session best',
+        sessionAvg: 'Session average',
+      },
     },
     mot: {
       name: 'Ball Tracking',
