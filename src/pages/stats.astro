@@ -9,23 +9,59 @@ import { strings } from '../lib/strings';
     <div class="card" id="stats-summary">
       <p class="dim" id="stats-empty">{strings.stats.noData}</p>
     </div>
+    <div id="stats-tests"></div>
   </main>
 
   <script>
+    import { games } from '../games/registry';
     import { getAllAttempts } from '../lib/storage';
-    import { dailyStreak } from '../lib/stats';
+    import { summarize, dailyStreak } from '../lib/stats';
+    import { historyChartSvg } from '../engine/chart';
     import { strings } from '../lib/strings';
 
-    // Phase 1: just totals + streak; full per-test charts land in phase 6.
+    const esc = (s: string): string =>
+      s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
     getAllAttempts().then((all) => {
       const attempts = Object.values(all).flat();
       if (!attempts.length) return;
-      const box = document.getElementById('stats-summary')!;
-      box.innerHTML = `
-        <div class="stat-row" style="display:flex;gap:32px">
-          <span class="dim">${strings.stats.totalAttempts}<b class="mono">${attempts.length}</b></span>
-          <span class="dim">${strings.stats.streak}<b class="mono">${dailyStreak(attempts)} ${strings.stats.days}</b></span>
+
+      // ---- overall summary ----
+      document.getElementById('stats-summary')!.innerHTML = `
+        <div class="stat-row" style="justify-content:flex-start;gap:40px">
+          <span class="dim">${esc(strings.stats.totalAttempts)}<b class="mono">${attempts.length}</b></span>
+          <span class="dim">${esc(strings.stats.streak)}<b class="mono">${dailyStreak(attempts)} ${esc(strings.stats.days)}</b></span>
         </div>`;
+
+      // ---- per-test sections ----
+      const container = document.getElementById('stats-tests')!;
+      for (const g of games) {
+        const list = all[g.id] ?? [];
+        if (!list.length) continue;
+        const sum = summarize(list, g.lowerIsBetter);
+        const valid = list.filter((a) => a.valid);
+        const failures = list.length - valid.length;
+
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.style.marginTop = 'var(--gap)';
+        card.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px">
+            <h2 style="font-size:1rem;margin:0">${esc(g.name)}</h2>
+            <span class="dim" style="font-size:0.8rem">
+              ${list.length} ${esc(strings.stats.attempts)}${failures ? ` · ${failures} ${esc(strings.stats.failures)}` : ''}
+            </span>
+          </div>
+          <div class="stat-row" style="justify-content:flex-start;gap:40px;margin:10px 0">
+            <span class="dim">${esc(strings.stats.best)}<b class="mono">${sum.best !== null ? esc(g.formatScore(sum.best)) : '—'}</b></span>
+            <span class="dim">${esc(strings.stats.average)}<b class="mono">${sum.average !== null ? esc(g.formatScore(sum.average)) : '—'}</b></span>
+          </div>
+          ${historyChartSvg(
+            valid.map((a) => ({ timestamp: a.timestamp, score: a.score })),
+            g.formatScore
+          )}`;
+        container.appendChild(card);
+      }
     });
   </script>
 </Layout>

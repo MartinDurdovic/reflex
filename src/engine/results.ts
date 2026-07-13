@@ -4,6 +4,7 @@
 import { getAttempts } from '../lib/storage';
 import { summarize } from '../lib/stats';
 import { strings } from '../lib/strings';
+import { sparklineSvg } from './chart';
 import type { GameMeta } from '../games/registry';
 
 export interface StatLine {
@@ -15,28 +16,6 @@ const HISTORY_LEN = 20;
 
 function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-/** Mini line chart of recent scores. Pure SVG, no deps. */
-function sparkline(scores: number[], w = 300, h = 72): string {
-  if (!scores.length) return '';
-  const pad = 8;
-  const min = Math.min(...scores);
-  const max = Math.max(...scores);
-  const span = max - min || 1; // flat series -> centered line
-  const x = (i: number): number =>
-    scores.length === 1
-      ? w / 2
-      : pad + (i / (scores.length - 1)) * (w - pad * 2);
-  const y = (v: number): number => pad + (1 - (v - min) / span) * (h - pad * 2);
-  const pts = scores.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`);
-  const lastX = x(scores.length - 1).toFixed(1);
-  const lastY = y(scores[scores.length - 1]!).toFixed(1);
-  return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img">
-    <polyline points="${pts.join(' ')}" fill="none" stroke="var(--accent)"
-      stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
-    <circle cx="${lastX}" cy="${lastY}" r="3.5" fill="var(--accent)"/>
-  </svg>`;
 }
 
 export async function renderResults(
@@ -58,7 +37,7 @@ export async function renderResults(
 
   const bigText =
     opts.scoreText ??
-    (opts.score !== null ? meta.formatScore(opts.score) : 'DNF');
+    (opts.score !== null ? meta.formatScore(opts.score) : strings.results.dnf);
 
   const isNewBest =
     opts.score !== null && sum.best !== null && opts.score === sum.best &&
@@ -103,7 +82,7 @@ export async function renderResults(
       </div>
       ${
         history.length > 1
-          ? `<div><p class="dim" style="font-size:0.8rem;margin:0 0 4px">${esc(strings.results.history)}</p>${sparkline(history)}</div>`
+          ? `<div><p class="dim" style="font-size:0.8rem;margin:0 0 4px">${esc(strings.results.history)}</p>${sparklineSvg(history)}</div>`
           : ''
       }
       ${opts.footnote ? `<p class="footnote">${esc(opts.footnote)}</p>` : ''}

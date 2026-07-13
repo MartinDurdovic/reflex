@@ -35,6 +35,7 @@ export const strings = {
     consistency: 'Consistency',
     history: 'Last 20 attempts',
     newBest: 'New personal best!',
+    dnf: 'DNF',
     latencyFootnote:
       "Measured value includes your device's display + touch latency.",
   },
@@ -50,6 +51,10 @@ export const strings = {
     streak: 'Daily streak',
     days: 'days',
     noData: 'No attempts yet. Play some tests first.',
+    best: 'Best',
+    average: 'Average',
+    attempts: 'attempts',
+    failures: 'failed',
   },
   settings: {
     title: 'Settings',
