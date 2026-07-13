@@ -56,6 +56,8 @@ export function run(ctx: PlayContext): void {
     difficulty,
     // a paused reaction trial is meaningless — abort on tab switch
     pauseMode: 'abort',
+    // the light sequence IS the countdown — start it right away
+    countdown: false,
   });
 
   // ---- DOM ----

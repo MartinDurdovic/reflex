@@ -30,6 +30,8 @@ export interface ShellOptions {
   difficulty: string;
   /** what to do when the tab is hidden mid-trial */
   pauseMode: PauseMode;
+  /** run the 3-2-1 countdown before onStart (default true) */
+  countdown?: boolean;
 }
 
 const COUNTDOWN_STEP_MS = 800;
@@ -73,6 +75,12 @@ export class GameShell {
     // fire, so the trial would stall and then burst on return. Abort now.
     if (document.visibilityState === 'hidden') {
       this.abortToOverlay();
+      return;
+    }
+    if (this.opts.countdown === false) {
+      this.state = 'live';
+      this.lockChrome(true);
+      cb.onStart();
       return;
     }
     this.state = 'countdown';
