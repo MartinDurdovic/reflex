@@ -60,7 +60,7 @@ export const games: GameMeta[] = [
     scoreUnit: 'ms',
     lowerIsBetter: true,
     formatScore: (v) => `${Math.round(v)} ms`,
-    implemented: false,
+    implemented: true,
     difficulties: [{ id: 'standard', label: d.normal }],
   },
   {
@@ -72,10 +72,10 @@ export const games: GameMeta[] = [
     scoreUnit: 'digits',
     lowerIsBetter: false,
     formatScore: (v) => `${v} digits`,
-    implemented: false,
+    implemented: true,
     difficulties: [
-      { id: 'forward', label: 'Forward' },
-      { id: 'reverse', label: 'Reverse' },
+      { id: 'forward', label: s['digit-span'].ui.forward },
+      { id: 'reverse', label: s['digit-span'].ui.reverse },
     ],
   },
   {

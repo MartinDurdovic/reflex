@@ -65,6 +65,8 @@ const meta = getGame(Astro.params.game!);
     const loaders: Record<string, () => Promise<{ run: (ctx: PlayContext) => void | Promise<void> }>> = {
       'reaction-f1': () => import('../../games/reaction-f1/game'),
       mot: () => import('../../games/mot/game'),
+      'go-nogo': () => import('../../games/go-nogo/game'),
+      'digit-span': () => import('../../games/digit-span/game'),
     };
     const gameId = document.getElementById('intro')!.dataset.game!;
     loaders[gameId]?.().then((mod) => bindIntro(gameId, mod.run));
