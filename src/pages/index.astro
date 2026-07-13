@@ -1,0 +1,49 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { games } from '../games/registry';
+import { strings } from '../lib/strings';
+---
+
+<Layout>
+  <main class="container">
+    <p class="dim">{strings.app.tagline}</p>
+    <div class="test-grid">
+      {
+        games.map((g) => (
+          <a class="card test-card" href={`/play/${g.id}/`} data-test-card={g.id}>
+            <span class="icon" set:html={g.icon} />
+            <span class="name">{g.name}</span>
+            <span class="dim" style="font-size:0.8rem">{g.short}</span>
+            <span class="meta">
+              {strings.home.personalBest}: <span data-best>{strings.home.never}</span>
+              <br />
+              {strings.home.lastPlayed}: <span data-last>{strings.home.never}</span>
+            </span>
+          </a>
+        ))
+      }
+    </div>
+  </main>
+
+  <script>
+    import { games } from '../games/registry';
+    import { summarizeTest } from '../lib/stats';
+    import { strings } from '../lib/strings';
+
+    // fill in personal best / last played per card from local storage
+    for (const g of games) {
+      summarizeTest(g.id, g.lowerIsBetter).then((sum) => {
+        const card = document.querySelector(`[data-test-card="${g.id}"]`);
+        if (!card) return;
+        const bestEl = card.querySelector('[data-best]')!;
+        const lastEl = card.querySelector('[data-last]')!;
+        if (sum.best !== null) bestEl.textContent = g.formatScore(sum.best);
+        if (sum.last) {
+          lastEl.textContent = new Date(sum.last.timestamp).toLocaleDateString();
+        } else {
+          lastEl.textContent = strings.home.never;
+        }
+      });
+    }
+  </script>
+</Layout>

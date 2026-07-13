@@ -1,0 +1,21 @@
+{
+  "name": "brain",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build && node scripts/generate-sw.mjs",
+    "preview": "astro preview",
+    "icons": "node scripts/generate-icons.mjs",
+    "check": "astro check"
+  },
+  "dependencies": {
+    "astro": "^5.0.0",
+    "idb-keyval": "^6.2.1"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.9",
+    "typescript": "^5.9.3"
+  }
+}

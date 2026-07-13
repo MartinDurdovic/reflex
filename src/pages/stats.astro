@@ -1,0 +1,31 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { strings } from '../lib/strings';
+---
+
+<Layout title={strings.stats.title}>
+  <main class="container">
+    <h1>{strings.stats.title}</h1>
+    <div class="card" id="stats-summary">
+      <p class="dim" id="stats-empty">{strings.stats.noData}</p>
+    </div>
+  </main>
+
+  <script>
+    import { getAllAttempts } from '../lib/storage';
+    import { dailyStreak } from '../lib/stats';
+    import { strings } from '../lib/strings';
+
+    // Phase 1: just totals + streak; full per-test charts land in phase 6.
+    getAllAttempts().then((all) => {
+      const attempts = Object.values(all).flat();
+      if (!attempts.length) return;
+      const box = document.getElementById('stats-summary')!;
+      box.innerHTML = `
+        <div class="stat-row" style="display:flex;gap:32px">
+          <span class="dim">${strings.stats.totalAttempts}<b class="mono">${attempts.length}</b></span>
+          <span class="dim">${strings.stats.streak}<b class="mono">${dailyStreak(attempts)} ${strings.stats.days}</b></span>
+        </div>`;
+    });
+  </script>
+</Layout>

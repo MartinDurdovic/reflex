@@ -1,0 +1,61 @@
+---
+// Intro page per test: how-it-works + difficulty selector -> game.
+// Games mount into #stage; unimplemented ones show a placeholder.
+import Layout from '../../layouts/Layout.astro';
+import { games, getGame } from '../../games/registry';
+import { strings } from '../../lib/strings';
+
+export function getStaticPaths() {
+  return games.map((g) => ({ params: { game: g.id } }));
+}
+
+const meta = getGame(Astro.params.game!);
+---
+
+<Layout title={meta.name}>
+  <main class="container" id="intro" data-game={meta.id}>
+    <h1>{meta.name}</h1>
+    <p class="dim">{meta.how}</p>
+
+    <div class="card" style="display:flex;flex-direction:column;gap:var(--gap)">
+      <div>
+        <label class="dim" style="font-size:0.85rem">{strings.difficulty.label}</label>
+        <div id="difficulty-row" style="display:flex;gap:8px;margin-top:6px">
+          {
+            meta.difficulties.map((d, i) => (
+              <button
+                data-difficulty={d.id}
+                class={i === 0 ? 'primary' : ''}
+                aria-pressed={i === 0 ? 'true' : 'false'}
+              >
+                {d.label}
+              </button>
+            ))
+          }
+        </div>
+      </div>
+      {
+        meta.implemented ? (
+          <button class="primary" id="start-btn" style="font-size:1.1rem">
+            {strings.shell.start}
+          </button>
+        ) : (
+          <p class="dim">{strings.comingSoon}</p>
+        )
+      }
+    </div>
+  </main>
+
+  <script>
+    // difficulty selector toggle (game modules read the pressed button)
+    const row = document.getElementById('difficulty-row');
+    row?.addEventListener('pointerdown', (e) => {
+      const btn = (e.target as HTMLElement).closest('button[data-difficulty]');
+      if (!btn) return;
+      for (const b of row.querySelectorAll('button')) {
+        b.classList.toggle('primary', b === btn);
+        b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
+      }
+    });
+  </script>
+</Layout>

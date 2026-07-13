@@ -1,0 +1,59 @@
+---
+import '../styles/theme.css';
+import { strings } from '../lib/strings';
+
+interface Props {
+  title?: string;
+  /** hide header nav (used by game pages so chrome can't be mis-tapped) */
+  bare?: boolean;
+}
+const { title, bare = false } = Astro.props;
+const pageTitle = title ? `${title} · ${strings.app.name}` : strings.app.name;
+const current = Astro.url.pathname;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no"
+    />
+    <title>{pageTitle}</title>
+    <meta name="theme-color" content="#0f1115" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  </head>
+  <body>
+    {
+      !bare && (
+        <header class="app-header">
+          <a href="/" class="brand">{strings.app.name}</a>
+          <nav>
+            <a href="/" aria-current={current === '/' ? 'page' : undefined}>
+              {strings.nav.home}
+            </a>
+            <a href="/stats/" aria-current={current.startsWith('/stats') ? 'page' : undefined}>
+              {strings.nav.stats}
+            </a>
+            <a href="/settings/" aria-current={current.startsWith('/settings') ? 'page' : undefined}>
+              {strings.nav.settings}
+            </a>
+          </nav>
+        </header>
+      )
+    }
+    <slot />
+    <script>
+      // Register the service worker (generated at build time; absent in dev).
+      if ('serviceWorker' in navigator && import.meta.env.PROD) {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      }
+    </script>
+  </body>
+</html>

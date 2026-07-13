@@ -1,0 +1,64 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { strings } from '../lib/strings';
+---
+
+<Layout title={strings.settings.title}>
+  <main class="container">
+    <h1>{strings.settings.title}</h1>
+
+    <div class="card" style="display:flex;flex-direction:column;gap:var(--gap)">
+      <h2 style="font-size:1rem">{strings.settings.data}</h2>
+      <button id="export-btn">{strings.settings.export}</button>
+      <button id="import-btn">{strings.settings.import}</button>
+      <input type="file" id="import-file" accept="application/json" hidden />
+      <button id="reset-btn" class="danger">{strings.settings.reset}</button>
+      <p class="dim" id="settings-msg" style="font-size:0.85rem"></p>
+    </div>
+
+    <div class="card" style="margin-top:var(--gap)">
+      <h2 style="font-size:1rem">{strings.settings.theme}</h2>
+      <p class="dim" style="font-size:0.85rem">{strings.settings.themeDark}</p>
+    </div>
+  </main>
+
+  <script>
+    import { exportData, importData, resetAllData } from '../lib/storage';
+    import { strings } from '../lib/strings';
+
+    const msg = document.getElementById('settings-msg')!;
+
+    document.getElementById('export-btn')!.addEventListener('click', async () => {
+      const blob = new Blob([JSON.stringify(await exportData(), null, 2)], {
+        type: 'application/json',
+      });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `brain-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    const fileInput = document.getElementById('import-file') as HTMLInputElement;
+    document.getElementById('import-btn')!.addEventListener('click', () => {
+      fileInput.click();
+    });
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+      try {
+        await importData(JSON.parse(await file.text()));
+        msg.textContent = strings.settings.importDone;
+      } catch {
+        msg.textContent = strings.settings.importError;
+      }
+      fileInput.value = '';
+    });
+
+    document.getElementById('reset-btn')!.addEventListener('click', async () => {
+      if (!confirm(strings.settings.resetConfirm)) return;
+      await resetAllData();
+      msg.textContent = '✓';
+    });
+  </script>
+</Layout>
