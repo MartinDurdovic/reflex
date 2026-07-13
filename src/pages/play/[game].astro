@@ -67,6 +67,7 @@ const meta = getGame(Astro.params.game!);
       mot: () => import('../../games/mot/game'),
       'go-nogo': () => import('../../games/go-nogo/game'),
       'digit-span': () => import('../../games/digit-span/game'),
+      rotation: () => import('../../games/rotation/game'),
     };
     const gameId = document.getElementById('intro')!.dataset.game!;
     loaders[gameId]?.().then((mod) => bindIntro(gameId, mod.run));

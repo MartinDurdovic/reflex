@@ -93,7 +93,15 @@ export const strings = {
     rotation: {
       name: 'Mental Rotation',
       short: '3D spatial reasoning',
-      how: 'Two 3D shapes are shown. Decide whether they are the SAME shape rotated, or MIRRORED copies. 10 trials per round.',
+      how: 'Two 3D shapes are shown, each from its own angle. Decide whether they are the SAME shape just rotated, or DIFFERENT (mirrored) shapes. 10 trials per round.',
+      ui: {
+        same: 'SAME',
+        different: 'DIFFERENT',
+        trial: (n: number, total: number) => `${n} / ${total}`,
+        avgTime: 'Avg answer time',
+        timeouts: 'Timeouts',
+        webglMissing: 'WebGL is not available on this device.',
+      },
     },
     'go-nogo': {
       name: 'Go / No-Go',

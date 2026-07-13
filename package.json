@@ -12,10 +12,13 @@
   },
   "dependencies": {
     "astro": "^5.0.0",
-    "idb-keyval": "^6.2.1"
+    "idb-keyval": "^6.2.1",
+    "three": "^0.185.1"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",
+    "@types/node": "^26.1.1",
+    "@types/three": "^0.185.1",
     "typescript": "^5.9.3"
   }
 }
