@@ -47,8 +47,8 @@ export const games: GameMeta[] = [
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="8" r="2.6"/><circle cx="16.5" cy="6.5" r="2.6"/><circle cx="12" cy="16" r="2.6"/><path d="M9 10.5l1.5 3M14.8 8.5L13.4 14"/></svg>`,
     scoreUnit: 'level',
     lowerIsBetter: false,
-    formatScore: (v) => `Level ${v}`,
-    implemented: false,
+    formatScore: (v) => `Level ${Math.round(v)}`,
+    implemented: true,
     difficulties: [{ id: 'staircase', label: d.normal }],
   },
   {

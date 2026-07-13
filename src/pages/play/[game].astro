@@ -62,8 +62,9 @@ const meta = getGame(Astro.params.game!);
     });
 
     // lazy-load only this page's game module (Vite code-splits each)
-    const loaders: Record<string, () => Promise<{ run: (ctx: PlayContext) => void }>> = {
+    const loaders: Record<string, () => Promise<{ run: (ctx: PlayContext) => void | Promise<void> }>> = {
       'reaction-f1': () => import('../../games/reaction-f1/game'),
+      mot: () => import('../../games/mot/game'),
     };
     const gameId = document.getElementById('intro')!.dataset.game!;
     loaders[gameId]?.().then((mod) => bindIntro(gameId, mod.run));

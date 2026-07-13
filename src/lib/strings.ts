@@ -81,6 +81,14 @@ export const strings = {
       name: 'Ball Tracking',
       short: 'Multiple object tracking',
       how: 'A few balls flash as targets, then all balls look identical and start moving. Keep your eyes on the targets. When they stop, tap the balls you tracked.',
+      ui: {
+        level: (n: number) => `Level ${n}`,
+        memorize: 'Memorize the highlighted balls',
+        track: 'Track them…',
+        select: (k: number) => `Tap the ${k} balls you tracked`,
+        thisLevel: 'This round',
+        nextLevel: 'Next round',
+      },
     },
     rotation: {
       name: 'Mental Rotation',
