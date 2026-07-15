@@ -30,7 +30,7 @@ import { strings } from '../lib/strings';
       document.getElementById('stats-summary')!.innerHTML = `
         <div class="readout-row">
           <span>${esc(strings.stats.totalAttempts)}<b>${attempts.length}</b></span>
-          <span>${esc(strings.stats.streak)}<b>${dailyStreak(attempts)} ${esc(strings.stats.days)}</b></span>
+          <span>${esc(strings.stats.streak)}<b>${dailyStreak(attempts)} ${esc(dailyStreak(attempts) === 1 ? strings.stats.day : strings.stats.days)}</b></span>
         </div>`;
 
       // ---- per-test sections ----

@@ -181,8 +181,14 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  /* minimum breathing room brand<->nav; nav wraps below on tiny screens */
+  flex-wrap: wrap;
+  gap: 6px 20px;
   padding: var(--gap);
   max-width: 720px;
+  /* body is a flex column: without an explicit width a flex item with
+     auto margins shrinks to fit-content and centers — force full width */
+  width: 100%;
   margin: 0 auto;
 }
 

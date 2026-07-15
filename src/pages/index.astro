@@ -62,8 +62,9 @@ import { strings } from '../lib/strings';
     Promise.all(games.map((g) => getAttempts(g.id))).then((lists) => {
       const all = lists.flat();
       document.querySelector('[data-sum-total]')!.textContent = String(all.length);
+      const streak = dailyStreak(all);
       document.querySelector('[data-sum-streak]')!.textContent =
-        `${dailyStreak(all)} ${strings.stats.days}`;
+        `${streak} ${streak === 1 ? strings.stats.day : strings.stats.days}`;
       const today = new Date().toDateString();
       document.querySelector('[data-sum-today]')!.textContent = String(
         all.filter((a) => new Date(a.timestamp).toDateString() === today).length

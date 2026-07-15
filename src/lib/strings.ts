@@ -58,6 +58,7 @@ export const strings = {
     title: 'Statistics',
     totalAttempts: 'Total attempts',
     streak: 'Daily streak',
+    day: 'day',
     days: 'days',
     noData: 'No attempts yet. Play some tests first.',
     best: 'Best',
