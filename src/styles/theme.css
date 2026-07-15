@@ -406,11 +406,33 @@ body.game-locked .app-header {
   text-align: right;
 }
 
+.mot-arena {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+}
+
 .mot-canvas {
   flex: 1;
   min-height: 0;
   width: 100%;
   display: block;
+}
+
+/* big reveal countdown, top-center so it doesn't cover mid-screen balls */
+.mot-countdown {
+  position: absolute;
+  top: 4%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: clamp(2.6rem, 12vw, 4.5rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  opacity: 0.9;
+  pointer-events: none;
 }
 
 .mot-bottom {

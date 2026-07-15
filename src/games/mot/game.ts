@@ -80,12 +80,16 @@ export function run(ctx: PlayContext): void {
       <span class="mono">${targetCount} / ${totalBalls}</span>
       <span class="mot-hint dim"></span>
     </div>
-    <canvas class="mot-canvas"></canvas>
+    <div class="mot-arena">
+      <canvas class="mot-canvas"></canvas>
+      <div class="mot-countdown mono" hidden></div>
+    </div>
     <div class="mot-bottom">
       <button class="primary" data-confirm hidden>${strings.shell.confirm}</button>
     </div>`;
   const canvas = stage.querySelector<HTMLCanvasElement>('.mot-canvas')!;
   const hintEl = stage.querySelector<HTMLElement>('.mot-hint')!;
+  const countdownEl = stage.querySelector<HTMLElement>('.mot-countdown')!;
   const confirmBtn = stage.querySelector<HTMLButtonElement>('[data-confirm]')!;
   const ctx2d = canvas.getContext('2d')!;
 
@@ -155,12 +159,14 @@ export function run(ctx: PlayContext): void {
   const update = (stepMs: number): void => {
     phaseElapsed += stepMs;
     if (phase === 'reveal') {
-      // live countdown until the balls start moving
+      // big on-screen countdown until the balls start moving
       const left = Math.max(0, (revealMs - phaseElapsed) / 1000);
-      hintEl.textContent = `${ui.memorize} · ${left.toFixed(1)}s`;
+      countdownEl.hidden = false;
+      countdownEl.textContent = left.toFixed(1);
       if (phaseElapsed >= revealMs) {
         phase = 'tracking';
         phaseElapsed = 0;
+        countdownEl.hidden = true;
         hintEl.textContent = ui.track;
       }
       return; // balls static while targets are highlighted
