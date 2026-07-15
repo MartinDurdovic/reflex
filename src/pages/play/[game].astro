@@ -12,10 +12,14 @@ export function getStaticPaths() {
 const meta = getGame(Astro.params.game!);
 const basicCfg = (meta.config ?? []).filter((f) => !f.advanced);
 const advancedCfg = (meta.config ?? []).filter((f) => f.advanced);
+const testIndex = String(games.findIndex((g) => g.id === meta.id) + 1).padStart(2, '0');
 ---
 
 <Layout title={meta.name}>
   <main class="container" id="intro" data-game={meta.id}>
+    <p class="protocol">
+      {strings.protocol.test} {testIndex} · <b>{meta.scoreUnit}</b>
+    </p>
     <h1>{meta.name}</h1>
     <p class="dim">{meta.how}</p>
 

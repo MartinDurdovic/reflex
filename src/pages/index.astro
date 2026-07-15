@@ -6,18 +6,26 @@ import { strings } from '../lib/strings';
 
 <Layout>
   <main class="container">
-    <p class="dim">{strings.app.tagline}</p>
-    <div class="test-grid">
+    <p class="dim" style="font-size:0.85rem">{strings.app.tagline}</p>
+    <div class="ledger">
       {
-        games.map((g) => (
-          <a class="card test-card" href={`/play/${g.id}/`} data-test-card={g.id}>
-            <span class="icon" set:html={g.icon} />
-            <span class="name">{g.name}</span>
-            <span class="dim" style="font-size:0.8rem">{g.short}</span>
-            <span class="meta">
-              {strings.home.personalBest}: <span data-best>{strings.home.never}</span>
-              <br />
-              {strings.home.lastPlayed}: <span data-last>{strings.home.never}</span>
+        games.map((g, i) => (
+          <a class="ledger-row" href={`/play/${g.id}/`} data-test-card={g.id}>
+            <span class="lr-index">{String(i + 1).padStart(2, '0')}</span>
+            <span class="lr-main">
+              <span class="lr-name">{g.name}</span>
+              <span class="lr-short">{g.short}</span>
+            </span>
+            <span class="lr-spark" data-spark aria-hidden="true" />
+            <span class="lr-data">
+              <span>
+                <i>{strings.home.personalBest}</i>
+                <span data-best>{strings.home.never}</span>
+              </span>
+              <span>
+                <i>{strings.home.lastPlayed}</i>
+                <span data-last>{strings.home.never}</span>
+              </span>
             </span>
           </a>
         ))
@@ -27,21 +35,27 @@ import { strings } from '../lib/strings';
 
   <script>
     import { games } from '../games/registry';
-    import { summarizeTest } from '../lib/stats';
-    import { strings } from '../lib/strings';
+    import { getAttempts } from '../lib/storage';
+    import { summarize } from '../lib/stats';
+    import { sparklineSvg } from '../engine/chart';
 
-    // fill in personal best / last played per card from local storage
+    // fill personal best / last played / sparkline per row from storage
     for (const g of games) {
-      summarizeTest(g.id, g.lowerIsBetter).then((sum) => {
-        const card = document.querySelector(`[data-test-card="${g.id}"]`);
-        if (!card) return;
-        const bestEl = card.querySelector('[data-best]')!;
-        const lastEl = card.querySelector('[data-last]')!;
-        if (sum.best !== null) bestEl.textContent = g.formatScore(sum.best);
+      getAttempts(g.id).then((attempts) => {
+        const row = document.querySelector(`[data-test-card="${g.id}"]`);
+        if (!row) return;
+        const sum = summarize(attempts, g.lowerIsBetter);
+        if (sum.best !== null) {
+          row.querySelector('[data-best]')!.textContent = g.formatScore(sum.best);
+        }
         if (sum.last) {
-          lastEl.textContent = new Date(sum.last.timestamp).toLocaleDateString();
-        } else {
-          lastEl.textContent = strings.home.never;
+          row.querySelector('[data-last]')!.textContent = new Date(
+            sum.last.timestamp
+          ).toLocaleDateString();
+        }
+        const recent = attempts.filter((a) => a.valid).slice(-10).map((a) => a.score);
+        if (recent.length > 1) {
+          row.querySelector('[data-spark]')!.innerHTML = sparklineSvg(recent, 76, 24);
         }
       });
     }

@@ -1,10 +1,11 @@
 // Tiny SVG chart helpers — no chart library. Used by the results
 // screen (sparkline) and the stats page (history chart).
 
-/** Mini line chart of recent scores (no axes). */
+/** Mini line chart of recent scores (no axes). Scales down to tiny inline use. */
 export function sparklineSvg(scores: number[], w = 300, h = 72): string {
   if (!scores.length) return '';
-  const pad = 8;
+  const pad = Math.min(8, h * 0.18);
+  const dotR = Math.min(3.5, h * 0.13);
   const min = Math.min(...scores);
   const max = Math.max(...scores);
   const span = max - min || 1; // flat series -> centered line
@@ -16,8 +17,8 @@ export function sparklineSvg(scores: number[], w = 300, h = 72): string {
   const lastY = y(scores[scores.length - 1]!).toFixed(1);
   return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img">
     <polyline points="${pts.join(' ')}" fill="none" stroke="var(--accent)"
-      stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
-    <circle cx="${lastX}" cy="${lastY}" r="3.5" fill="var(--accent)"/>
+      stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
+    <circle cx="${lastX}" cy="${lastY}" r="${dotR}" fill="var(--accent)"/>
   </svg>`;
 }
 

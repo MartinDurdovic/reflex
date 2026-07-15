@@ -1,5 +1,5 @@
 // All user-facing strings live here (Slovak translation drops in later).
-export const APP_NAME = 'Brain';
+export const APP_NAME = 'Reflex';
 
 export const strings = {
   app: {
@@ -41,6 +41,9 @@ export const strings = {
   },
   config: {
     advanced: 'Advanced options',
+  },
+  protocol: {
+    test: 'Test',
   },
   difficulty: {
     label: 'Difficulty',

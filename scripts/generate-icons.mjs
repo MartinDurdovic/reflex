@@ -47,20 +47,20 @@ function encodePng(size, rgba) {
   ]);
 }
 
-// ---- placeholder icon art ---------------------------------------------
-const BG = [0x0f, 0x11, 0x15];
-const ACCENT = [0x4f, 0x8c, 0xff];
-const ACCENT_DIM = [0x2b, 0x4a, 0x85];
+// ---- REFLEX brand mark: five start lamps, last one lit amber -----------
+const BG = [0x13, 0x11, 0x10]; // --bg
+const LAMP_OFF = [0x33, 0x15, 0x12]; // --game-light-off
+const LAMP_ON = [0xff, 0xb0, 0x00]; // --accent (signal amber)
 
 function drawIcon(size, { maskable }) {
   const rgba = Buffer.alloc(size * size * 4);
   const c = size / 2;
   // maskable icons must keep content inside the central 80% "safe zone"
-  const scale = maskable ? 0.8 : 1;
-  const ringR = c * 0.62 * scale;
-  const ringW = c * 0.09 * scale;
-  const dotR = c * 0.3 * scale;
+  const scale = maskable ? 0.72 : 1;
+  const lampR = size * 0.062 * scale;
+  const gap = size * 0.165 * scale; // center-to-center spacing
   const cornerR = maskable ? 0 : size * 0.2; // rounded corners unless maskable
+  const centers = [-2, -1, 0, 1, 2].map((k) => c + k * gap);
 
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
@@ -72,10 +72,13 @@ function drawIcon(size, { maskable }) {
         const dy = Math.max(cornerR - y, y - (size - 1 - cornerR), 0);
         if (dx * dx + dy * dy > cornerR * cornerR) alpha = 0;
       }
-      const d = Math.hypot(x - c + 0.5, y - c + 0.5);
       let col = BG;
-      if (d < dotR) col = ACCENT;
-      else if (Math.abs(d - ringR) < ringW) col = ACCENT_DIM;
+      for (let l = 0; l < 5; l++) {
+        if (Math.hypot(x - centers[l] + 0.5, y - c + 0.5) < lampR) {
+          col = l === 4 ? LAMP_ON : LAMP_OFF;
+          break;
+        }
+      }
       rgba[i] = col[0];
       rgba[i + 1] = col[1];
       rgba[i + 2] = col[2];

@@ -21,9 +21,23 @@ const current = Astro.url.pathname;
       content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no"
     />
     <title>{pageTitle}</title>
-    <meta name="theme-color" content="#0f1115" />
+    <meta name="theme-color" content="#131110" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="/manifest.webmanifest" />
+    <link
+      rel="preload"
+      href="/fonts/IBMPlexMono-Regular.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/IBMPlexMono-SemiBold.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -33,7 +47,10 @@ const current = Astro.url.pathname;
     {
       !bare && (
         <header class="app-header">
-          <a href="/" class="brand">{strings.app.name}</a>
+          <a href="/" class="brand">
+            <span class="brand-lamps" aria-hidden="true"><i /><i /><i /><i /><i /></span>
+            {strings.app.name}
+          </a>
           <nav>
             <a href="/" aria-current={current === '/' ? 'page' : undefined}>
               {strings.nav.home}
