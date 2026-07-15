@@ -53,7 +53,16 @@ export function historyChartSvg(
   const lastX = x(points.length - 1).toFixed(1);
   const lastY = y(points[points.length - 1]!.score).toFixed(1);
 
+  // recessive graticule between the min/max rules
+  const grid = [0.25, 0.5, 0.75]
+    .map((f) => {
+      const gy = (padT + f * (h - padT - padB)).toFixed(1);
+      return `<line x1="${padL}" y1="${gy}" x2="${w - padR}" y2="${gy}" stroke="var(--border)" stroke-width="1" stroke-dasharray="1 6" opacity="0.7"/>`;
+    })
+    .join('');
+
   return `<svg viewBox="0 0 ${w} ${h}" width="100%" role="img" style="display:block">
+    ${grid}
     <line x1="${padL}" y1="${y(max)}" x2="${w - padR}" y2="${y(max)}" stroke="var(--border)" stroke-dasharray="3 4"/>
     <line x1="${padL}" y1="${y(min)}" x2="${w - padR}" y2="${y(min)}" stroke="var(--border)" stroke-dasharray="3 4"/>
     <polyline points="${pts.join(' ')}" fill="none" stroke="var(--accent)"

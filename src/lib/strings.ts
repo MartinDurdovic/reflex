@@ -5,6 +5,7 @@ export const strings = {
   app: {
     name: APP_NAME,
     tagline: 'Cognitive testing & training',
+    footerLocal: 'All data stays on this device',
   },
   nav: {
     home: 'Tests',
@@ -15,6 +16,8 @@ export const strings = {
     personalBest: 'Best',
     lastPlayed: 'Last',
     never: '—',
+    allTests: 'All tests',
+    today: 'Today',
   },
   shell: {
     start: 'Start',

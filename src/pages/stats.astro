@@ -28,9 +28,9 @@ import { strings } from '../lib/strings';
 
       // ---- overall summary ----
       document.getElementById('stats-summary')!.innerHTML = `
-        <div class="stat-row" style="justify-content:flex-start;gap:40px">
-          <span class="dim">${esc(strings.stats.totalAttempts)}<b class="mono">${attempts.length}</b></span>
-          <span class="dim">${esc(strings.stats.streak)}<b class="mono">${dailyStreak(attempts)} ${esc(strings.stats.days)}</b></span>
+        <div class="readout-row">
+          <span>${esc(strings.stats.totalAttempts)}<b>${attempts.length}</b></span>
+          <span>${esc(strings.stats.streak)}<b>${dailyStreak(attempts)} ${esc(strings.stats.days)}</b></span>
         </div>`;
 
       // ---- per-test sections ----
@@ -47,14 +47,14 @@ import { strings } from '../lib/strings';
         card.style.marginTop = 'var(--gap)';
         card.innerHTML = `
           <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px">
-            <h2 style="font-size:1rem;margin:0">${esc(g.name)}</h2>
-            <span class="dim" style="font-size:0.8rem">
+            <h2 style="font-size:0.95rem;margin:0">${esc(g.name)}</h2>
+            <span class="dim mono" style="font-size:0.72rem;letter-spacing:0.08em;text-transform:uppercase">
               ${list.length} ${esc(strings.stats.attempts)}${failures ? ` · ${failures} ${esc(strings.stats.failures)}` : ''}
             </span>
           </div>
-          <div class="stat-row" style="justify-content:flex-start;gap:40px;margin:10px 0">
-            <span class="dim">${esc(strings.stats.best)}<b class="mono">${sum.best !== null ? esc(g.formatScore(sum.best)) : '—'}</b></span>
-            <span class="dim">${esc(strings.stats.average)}<b class="mono">${sum.average !== null ? esc(g.formatScore(sum.average)) : '—'}</b></span>
+          <div class="readout-row" style="margin:12px 0">
+            <span>${esc(strings.stats.best)}<b>${sum.best !== null ? esc(g.formatScore(sum.best)) : '—'}</b></span>
+            <span>${esc(strings.stats.average)}<b>${sum.average !== null ? esc(g.formatScore(sum.average)) : '—'}</b></span>
           </div>
           ${historyChartSvg(
             valid.map((a) => ({ timestamp: a.timestamp, score: a.score })),

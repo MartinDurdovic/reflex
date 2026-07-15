@@ -76,7 +76,16 @@ html {
 body {
   margin: 0;
   min-height: 100dvh;
-  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg);
+  /* faint dot graticule — instrument surface, kills the empty void.
+     game stages stay solid (no visual noise during play) */
+  background-image: radial-gradient(
+    color-mix(in srgb, var(--text) 4.5%, transparent) 1px,
+    transparent 1.5px
+  );
+  background-size: 26px 26px;
   color: var(--text);
   font-family: var(--font);
   line-height: 1.55;
@@ -106,9 +115,7 @@ a {
 }
 
 /* micro-label: engraved-plate style, used across the app */
-.label,
-.results .stat-row span > i,
-.lr-data i {
+.label {
   display: block;
   font-family: var(--font-mono);
   font-style: normal;
@@ -224,12 +231,122 @@ button:disabled {
   color: var(--accent);
 }
 
-/* ---- panels ---- */
+@media (max-width: 380px) {
+  .app-header .brand {
+    letter-spacing: 0.12em;
+    gap: 8px;
+  }
+
+  .app-header nav {
+    gap: 12px;
+  }
+
+  .app-header nav a {
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+  }
+}
+
+/* ---- panels & furniture ---- */
 .card {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: var(--gap);
+}
+
+/* section header with a hairline rule running to the edge */
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: calc(var(--gap) * 1.6) 0 8px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+}
+
+.section-label::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--border);
+}
+
+/* small unit chip: [ms] [%] [digits] */
+.badge {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+
+/* instrument cluster: N cells of label + big readout */
+.readout-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.readout-strip > div {
+  padding: 10px 12px;
+  border-left: 1px solid var(--border);
+  min-width: 0;
+}
+
+.readout-strip > div:first-child {
+  border-left: none;
+}
+
+.readout-strip b {
+  display: block;
+  margin-top: 3px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: clamp(1rem, 4.5vw, 1.3rem);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+/* wrapping label+value row (stats page) */
+.readout-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 32px;
+  font-variant-numeric: tabular-nums;
+}
+
+.readout-row > span {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+}
+
+.readout-row b {
+  display: block;
+  margin-top: 2px;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--text);
+}
+
+.tagline {
+  font-size: 0.85rem;
+  margin: 2px 0 var(--gap);
 }
 
 /* ---- home: test ledger ---- */
@@ -240,12 +357,18 @@ button:disabled {
   overflow: hidden;
 }
 
+/* mobile-first: name/desc wrap freely, data line runs underneath.
+   nothing is ever ellipsized — text always reads in full. */
 .ledger-row {
   display: grid;
-  grid-template-columns: 2.4rem 1fr auto auto;
-  align-items: center;
-  gap: 12px;
-  padding: 14px var(--gap);
+  grid-template-columns: 2.2rem 1fr auto;
+  grid-template-areas:
+    'idx main  spark'
+    'idx short spark'
+    'idx data  data';
+  column-gap: 10px;
+  row-gap: 3px;
+  padding: 13px var(--gap);
   color: var(--text);
   border-bottom: 1px solid var(--border);
   -webkit-tap-highlight-color: transparent;
@@ -260,16 +383,20 @@ button:disabled {
 }
 
 .lr-index {
+  grid-area: idx;
+  padding-top: 3px;
   font-family: var(--font-mono);
   font-size: 0.78rem;
   color: var(--text-dim);
 }
 
 .lr-main {
+  grid-area: main;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: 1px;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .lr-name {
@@ -278,17 +405,17 @@ button:disabled {
   font-size: 0.92rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .lr-short {
+  grid-area: short;
   font-size: 0.74rem;
   color: var(--text-dim);
 }
 
 .lr-spark {
+  grid-area: spark;
+  align-self: center;
   width: 76px;
   height: 24px;
 }
@@ -298,21 +425,58 @@ button:disabled {
 }
 
 .lr-data {
+  grid-area: data;
   display: flex;
-  gap: 16px;
-  text-align: right;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin-top: 5px;
   font-family: var(--font-mono);
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
 }
 
 .lr-data > span {
-  min-width: 3.2rem;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
 }
 
-@media (max-width: 420px) {
+.lr-data i {
+  font-style: normal;
+  font-weight: 400;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+}
+
+@media (max-width: 359px) {
   .lr-spark {
     display: none;
+  }
+}
+
+/* wide: everything on one line, data right-aligned in columns */
+@media (min-width: 620px) {
+  .ledger-row {
+    grid-template-columns: 2.4rem 1fr 76px auto;
+    grid-template-areas:
+      'idx main  spark data'
+      'idx short spark data';
+    column-gap: 14px;
+    align-items: center;
+  }
+
+  .lr-data {
+    margin-top: 0;
+    gap: 20px;
+  }
+
+  .lr-data > span {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    min-width: 5.4rem;
   }
 }
 
@@ -388,19 +552,24 @@ body.game-locked .app-header {
   padding: calc(var(--gap) * 2) var(--gap);
 }
 
+/* readout window: hairline rules above and below the big number */
 .results .score {
   font-family: var(--font-mono);
-  font-size: 3.2rem;
+  font-size: clamp(2.3rem, 11vw, 3.2rem);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: 1;
+  border-block: 1px solid var(--border);
+  padding: 14px 30px;
 }
 
 .results .stat-row {
   display: flex;
-  gap: calc(var(--gap) * 2);
+  flex-wrap: wrap;
+  gap: 12px calc(var(--gap) * 2);
   justify-content: center;
   font-variant-numeric: tabular-nums;
+  max-width: 100%;
 }
 
 .results .stat-row span {
@@ -589,6 +758,7 @@ body.game-locked .app-header {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   text-align: right;
+  max-width: 64%; /* wraps instead of colliding with the counter */
 }
 
 .mot-arena {
@@ -783,6 +953,43 @@ body.game-locked .app-header {
   flex: 1;
   font-size: 1rem;
   padding: 14px 0;
+}
+
+/* ---- footer nameplate ---- */
+.app-footer {
+  max-width: 720px;
+  width: 100%;
+  margin: calc(var(--gap) * 2) auto 0;
+  padding: var(--gap);
+  padding-bottom: calc(var(--gap) + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+}
+
+.app-footer .foot-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-footer .brand-lamps i {
+  width: 6px;
+  height: 6px;
+}
+
+/* pages fill the viewport so the nameplate sits at the bottom */
+.container {
+  flex: 1 0 auto;
+  width: 100%;
 }
 
 /* ---- misc ---- */

@@ -6,7 +6,24 @@ import { strings } from '../lib/strings';
 
 <Layout>
   <main class="container">
-    <p class="dim" style="font-size:0.85rem">{strings.app.tagline}</p>
+    <p class="dim tagline">{strings.app.tagline}</p>
+
+    <div class="readout-strip">
+      <div>
+        <span class="label">{strings.stats.totalAttempts}</span>
+        <b data-sum-total>0</b>
+      </div>
+      <div>
+        <span class="label">{strings.stats.streak}</span>
+        <b data-sum-streak>0</b>
+      </div>
+      <div>
+        <span class="label">{strings.home.today}</span>
+        <b data-sum-today>0</b>
+      </div>
+    </div>
+
+    <p class="section-label">{strings.home.allTests}</p>
     <div class="ledger">
       {
         games.map((g, i) => (
@@ -14,8 +31,9 @@ import { strings } from '../lib/strings';
             <span class="lr-index">{String(i + 1).padStart(2, '0')}</span>
             <span class="lr-main">
               <span class="lr-name">{g.name}</span>
-              <span class="lr-short">{g.short}</span>
+              <span class="badge">{g.scoreUnit}</span>
             </span>
+            <span class="lr-short">{g.short}</span>
             <span class="lr-spark" data-spark aria-hidden="true" />
             <span class="lr-data">
               <span>
@@ -36,12 +54,23 @@ import { strings } from '../lib/strings';
   <script>
     import { games } from '../games/registry';
     import { getAttempts } from '../lib/storage';
-    import { summarize } from '../lib/stats';
+    import { summarize, dailyStreak } from '../lib/stats';
     import { sparklineSvg } from '../engine/chart';
+    import { strings } from '../lib/strings';
 
-    // fill personal best / last played / sparkline per row from storage
-    for (const g of games) {
-      getAttempts(g.id).then((attempts) => {
+    // one storage pass powers the summary strip and every ledger row
+    Promise.all(games.map((g) => getAttempts(g.id))).then((lists) => {
+      const all = lists.flat();
+      document.querySelector('[data-sum-total]')!.textContent = String(all.length);
+      document.querySelector('[data-sum-streak]')!.textContent =
+        `${dailyStreak(all)} ${strings.stats.days}`;
+      const today = new Date().toDateString();
+      document.querySelector('[data-sum-today]')!.textContent = String(
+        all.filter((a) => new Date(a.timestamp).toDateString() === today).length
+      );
+
+      games.forEach((g, i) => {
+        const attempts = lists[i]!;
         const row = document.querySelector(`[data-test-card="${g.id}"]`);
         if (!row) return;
         const sum = summarize(attempts, g.lowerIsBetter);
@@ -58,6 +87,6 @@ import { strings } from '../lib/strings';
           row.querySelector('[data-spark]')!.innerHTML = sparklineSvg(recent, 76, 24);
         }
       });
-    }
+    });
   </script>
 </Layout>

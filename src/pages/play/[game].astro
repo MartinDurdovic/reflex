@@ -23,6 +23,21 @@ const testIndex = String(games.findIndex((g) => g.id === meta.id) + 1).padStart(
     <h1>{meta.name}</h1>
     <p class="dim">{meta.how}</p>
 
+    <div class="readout-strip" id="record-strip" hidden style="margin-bottom:var(--gap)">
+      <div>
+        <span class="label">{strings.stats.best}</span>
+        <b data-rec-best>—</b>
+      </div>
+      <div>
+        <span class="label">{strings.stats.average}</span>
+        <b data-rec-avg>—</b>
+      </div>
+      <div>
+        <span class="label">{strings.stats.totalAttempts}</span>
+        <b data-rec-count>—</b>
+      </div>
+    </div>
+
     <div class="card" style="display:flex;flex-direction:column;gap:var(--gap)">
       {
         meta.difficulties.length > 0 && (
@@ -110,6 +125,7 @@ const testIndex = String(games.findIndex((g) => g.id === meta.id) + 1).padStart(
     import type { PlayContext } from '../../engine/mount';
     import { getGame } from '../../games/registry';
     import { getSettings, setSetting } from '../../lib/storage';
+    import { summarizeTest } from '../../lib/stats';
 
     // difficulty selector toggle (game modules read the pressed button)
     const row = document.getElementById('difficulty-row');
@@ -126,6 +142,18 @@ const testIndex = String(games.findIndex((g) => g.id === meta.id) + 1).padStart(
     const introEl = document.getElementById('intro') as HTMLElement;
     const cfgGameId = introEl.dataset.game!;
     const cfgMeta = getGame(cfgGameId);
+
+    // personal record strip (hidden until this test has attempts)
+    summarizeTest(cfgGameId, cfgMeta.lowerIsBetter).then((sum) => {
+      if (!sum.count) return;
+      const strip = document.getElementById('record-strip')!;
+      strip.hidden = false;
+      strip.querySelector('[data-rec-best]')!.textContent =
+        sum.best !== null ? cfgMeta.formatScore(sum.best) : '—';
+      strip.querySelector('[data-rec-avg]')!.textContent =
+        sum.average !== null ? cfgMeta.formatScore(sum.average) : '—';
+      strip.querySelector('[data-rec-count]')!.textContent = String(sum.count);
+    });
     if (cfgMeta.config) {
       const CFG_KEY = `${cfgGameId}.config`;
       const fields = cfgMeta.config;

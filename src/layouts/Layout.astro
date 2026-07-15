@@ -66,6 +66,19 @@ const current = Astro.url.pathname;
       )
     }
     <slot />
+    {
+      !bare && (
+        <footer class="app-footer">
+          <span class="foot-left">
+            <span class="brand-lamps" aria-hidden="true">
+              <i /><i /><i /><i /><i />
+            </span>
+            {strings.app.name} · MK I
+          </span>
+          <span>{strings.app.footerLocal}</span>
+        </footer>
+      )
+    }
     <script>
       // Register the service worker (generated at build time; absent in
       // dev) and auto-apply updates: promote a waiting SW and reload —
