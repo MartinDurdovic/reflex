@@ -15,6 +15,10 @@ export interface ConfigField {
   min: number;
   max: number;
   default: number;
+  /** increment for the ± buttons and typed-value rounding (default 1) */
+  step?: number;
+  /** hidden under the "Advanced options" dropdown */
+  advanced?: boolean;
   /** dependent upper bound, evaluated against the current values */
   dynamicMax?: (values: Record<string, number>) => number;
 }
@@ -74,8 +78,12 @@ export const games: GameMeta[] = [
         // never more than half the balls (odd totals round down)
         dynamicMax: (v) => Math.max(1, Math.floor((v['total'] ?? 8) / 2)),
       },
-      { id: 'speed', label: s.mot.ui.cfgSpeed, min: 1, max: 10, default: 4 },
-      { id: 'size', label: s.mot.ui.cfgSize, min: 1, max: 10, default: 5 },
+      { id: 'speed', label: s.mot.ui.cfgSpeed, min: 1, max: 10, default: 4, advanced: true },
+      { id: 'size', label: s.mot.ui.cfgSize, min: 1, max: 10, default: 5, advanced: true },
+      // tracking duration in seconds: 5s .. 10 minutes
+      { id: 'time', label: s.mot.ui.cfgTime, min: 5, max: 600, default: 8, advanced: true },
+      // memorize countdown before the balls start moving
+      { id: 'countdown', label: s.mot.ui.cfgCountdown, min: 0.5, max: 5, default: 2, step: 0.5, advanced: true },
     ],
   },
   {

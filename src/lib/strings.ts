@@ -39,6 +39,9 @@ export const strings = {
     latencyFootnote:
       "Measured value includes your device's display + touch latency.",
   },
+  config: {
+    advanced: 'Advanced options',
+  },
   difficulty: {
     label: 'Difficulty',
     easy: 'Easy',
@@ -95,6 +98,8 @@ export const strings = {
         cfgTargets: 'Balls to track',
         cfgSpeed: 'Ball speed',
         cfgSize: 'Ball size',
+        cfgTime: 'Tracking time (s)',
+        cfgCountdown: 'Start countdown (s)',
       },
     },
     rotation: {

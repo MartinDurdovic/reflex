@@ -370,6 +370,27 @@ body.game-locked .app-header {
   margin: 0;
 }
 
+.cfg-advanced summary {
+  cursor: pointer;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  padding: 6px 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cfg-advanced[open] summary {
+  color: var(--text);
+}
+
+.cfg-advanced-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 8px;
+}
+
 /* ---- game: MOT (ball tracking) ---- */
 .mot-top {
   display: flex;

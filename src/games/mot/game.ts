@@ -26,8 +26,7 @@ import { deviceTypeFromEvent } from '../../lib/device';
 import { strings } from '../../lib/strings';
 
 const STEP_MS = 1000 / 120;
-const REVEAL_MS = 2000;
-const TRACK_MS = 8000;
+const ANSWER_REVEAL_MS = 3500; // how long the solution stays on the board
 const PERTURB_INTERVAL_MS = 500; // avg time between heading nudges
 const PERTURB_MAX_RAD = 0.35;
 
@@ -54,19 +53,25 @@ export function run(ctx: PlayContext): void {
 
   // config values arrive clamped by the intro screen; clamp again anyway
   const clamp = (v: unknown, min: number, max: number, dflt: number): number => {
-    const n = Math.round(Number(v));
+    const n = Number(v);
     return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : dflt;
   };
-  const totalBalls = clamp(config['total'], 2, 20, 8);
-  const targetCount = clamp(config['targets'], 1, Math.max(1, Math.floor(totalBalls / 2)), 3);
-  const speedSetting = clamp(config['speed'], 1, 10, 4);
-  const sizeSetting = clamp(config['size'], 1, 10, 5);
+  const clampInt = (v: unknown, min: number, max: number, dflt: number): number =>
+    Math.round(clamp(v, min, max, dflt));
+  const totalBalls = clampInt(config['total'], 2, 20, 8);
+  const targetCount = clampInt(config['targets'], 1, Math.max(1, Math.floor(totalBalls / 2)), 3);
+  const speedSetting = clampInt(config['speed'], 1, 10, 4);
+  const sizeSetting = clampInt(config['size'], 1, 10, 5);
+  const trackMs = clampInt(config['time'], 5, 600, 8) * 1000;
+  const revealMs = clamp(config['countdown'], 0.5, 5, 2) * 1000;
 
   const shell = new GameShell({
     stage,
     testId: meta.id,
     difficulty,
     pauseMode: 'pause', // freezing MOT reveals nothing — safe to pause
+    // the memorize phase has its own configurable countdown
+    countdown: false,
   });
 
   // ---- DOM ----
@@ -89,6 +94,8 @@ export function run(ctx: PlayContext): void {
   const COL_BALL = css.getPropertyValue('--game-ball').trim() || '#6b7488';
   const COL_TARGET = css.getPropertyValue('--game-ball-target').trim() || '#ffc24f';
   const COL_ACCENT = css.getPropertyValue('--accent').trim() || '#4f8cff';
+  const COL_GOOD = css.getPropertyValue('--success').trim() || '#3ecf6e';
+  const COL_BAD = css.getPropertyValue('--danger').trim() || '#ff4f5e';
 
   // ---- canvas sizing (locked at round start) ----
   const dpr = Math.min(devicePixelRatio || 1, 2);
@@ -105,8 +112,9 @@ export function run(ctx: PlayContext): void {
 
   // ---- world state ----
   let balls: Ball[] = [];
-  let phase: 'reveal' | 'tracking' | 'select' = 'reveal';
+  let phase: 'reveal' | 'tracking' | 'select' | 'answers' = 'reveal';
   let phaseElapsed = 0; // simulated ms, advances only in update()
+  let roundCorrect = 0; // filled when the answer is confirmed
   const minDim = (): number => Math.min(W, H);
 
   const spawnBalls = (): void => {
@@ -147,12 +155,19 @@ export function run(ctx: PlayContext): void {
   const update = (stepMs: number): void => {
     phaseElapsed += stepMs;
     if (phase === 'reveal') {
-      if (phaseElapsed >= REVEAL_MS) {
+      // live countdown until the balls start moving
+      const left = Math.max(0, (revealMs - phaseElapsed) / 1000);
+      hintEl.textContent = `${ui.memorize} · ${left.toFixed(1)}s`;
+      if (phaseElapsed >= revealMs) {
         phase = 'tracking';
         phaseElapsed = 0;
         hintEl.textContent = ui.track;
       }
-      return; // balls static while targets flash
+      return; // balls static while targets are highlighted
+    }
+    if (phase === 'answers') {
+      if (phaseElapsed >= ANSWER_REVEAL_MS) finishRound();
+      return;
     }
     if (phase !== 'tracking') return;
 
@@ -229,7 +244,7 @@ export function run(ctx: PlayContext): void {
       }
     }
 
-    if (phaseElapsed >= TRACK_MS) enterSelect();
+    if (phaseElapsed >= trackMs) enterSelect();
   };
 
   const enterSelect = (): void => {
@@ -246,14 +261,22 @@ export function run(ctx: PlayContext): void {
       ctx2d.beginPath();
       ctx2d.arc(b.x, b.y, b.r, 0, Math.PI * 2);
       if (phase === 'reveal' && b.isTarget) {
-        // flash: pulse between target color and base ~2.5x/s
-        const pulse = Math.sin(phaseElapsed * 0.016) > -0.2;
-        ctx2d.fillStyle = pulse ? COL_TARGET : COL_BALL;
+        // solid, clearly visible highlight while memorizing (plus glow)
+        ctx2d.fillStyle = COL_TARGET;
+        ctx2d.shadowColor = COL_TARGET;
+        ctx2d.shadowBlur = b.r * 0.9;
+      } else if (phase === 'answers') {
+        // solution reveal: targets green; wrongly selected balls red
+        if (b.isTarget) ctx2d.fillStyle = COL_GOOD;
+        else if (b.selected) ctx2d.fillStyle = COL_BAD;
+        else ctx2d.fillStyle = COL_BALL;
       } else {
         ctx2d.fillStyle = COL_BALL;
       }
       ctx2d.fill();
-      if (phase === 'select' && b.selected) {
+      ctx2d.shadowBlur = 0;
+      // the player's picks keep their blue ring through the reveal
+      if ((phase === 'select' || phase === 'answers') && b.selected) {
         ctx2d.lineWidth = 3;
         ctx2d.strokeStyle = COL_ACCENT;
         ctx2d.stroke();
@@ -290,36 +313,45 @@ export function run(ctx: PlayContext): void {
     updateConfirm();
   };
 
+  /** Confirmed: show the solution on the board for a few seconds. */
+  const enterAnswers = (): void => {
+    roundCorrect = balls.filter((b) => b.selected && b.isTarget).length;
+    phase = 'answers';
+    phaseElapsed = 0;
+    confirmBtn.hidden = true;
+    hintEl.textContent = `${ui.correct}: ${roundCorrect} / ${targetCount}`;
+  };
+
   const finishRound = async (): Promise<void> => {
     loop.cancel();
     canvas.removeEventListener('pointerdown', onPointerDown);
-    const correct = balls.filter((b) => b.selected && b.isTarget).length;
-    const accuracy = (correct / targetCount) * 100;
+    const accuracy = (roundCorrect / targetCount) * 100;
 
     await shell.finish({
       score: accuracy,
       valid: true,
       params: {
-        correct,
+        correct: roundCorrect,
         targets: targetCount,
         balls: totalBalls,
         speed: speedSetting,
         size: sizeSetting,
-        durationMs: TRACK_MS,
+        durationMs: trackMs,
+        revealMs,
       },
     });
 
     renderResults(stage, {
       meta,
       score: accuracy,
-      scoreText: `${correct} / ${targetCount}`,
+      scoreText: `${roundCorrect} / ${targetCount}`,
       stats: [{ label: ui.correct, value: `${Math.round(accuracy)}%` }],
     });
   };
 
   confirmBtn.addEventListener('pointerdown', (e) => {
     if (!e.isPrimary || confirmBtn.disabled || phase !== 'select') return;
-    finishRound();
+    enterAnswers();
   });
   canvas.addEventListener('pointerdown', onPointerDown);
 

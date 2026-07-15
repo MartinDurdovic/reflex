@@ -10,6 +10,8 @@ export function getStaticPaths() {
 }
 
 const meta = getGame(Astro.params.game!);
+const basicCfg = (meta.config ?? []).filter((f) => !f.advanced);
+const advancedCfg = (meta.config ?? []).filter((f) => f.advanced);
 ---
 
 <Layout title={meta.name}>
@@ -39,7 +41,7 @@ const meta = getGame(Astro.params.game!);
       {
         meta.config && (
           <div id="config-rows">
-            {meta.config.map((f) => (
+            {basicCfg.map((f) => (
               <div class="cfg-row">
                 <span class="dim">{f.label}</span>
                 <div class="cfg-ctrl">
@@ -50,13 +52,40 @@ const meta = getGame(Astro.params.game!);
                     data-cfg={f.id}
                     min={f.min}
                     max={f.max}
+                    step={f.step ?? 1}
                     value={f.default}
-                    inputmode="numeric"
+                    inputmode="decimal"
                   />
                   <button data-cfg-step={f.id} data-dir="1" aria-label="increase">+</button>
                 </div>
               </div>
             ))}
+            {advancedCfg.length > 0 && (
+              <details class="cfg-advanced">
+                <summary>{strings.config.advanced}</summary>
+                <div class="cfg-advanced-rows">
+                  {advancedCfg.map((f) => (
+                    <div class="cfg-row">
+                      <span class="dim">{f.label}</span>
+                      <div class="cfg-ctrl">
+                        <button data-cfg-step={f.id} data-dir="-1" aria-label="decrease">−</button>
+                        <input
+                          type="number"
+                          class="mono"
+                          data-cfg={f.id}
+                          min={f.min}
+                          max={f.max}
+                          step={f.step ?? 1}
+                          value={f.default}
+                          inputmode="decimal"
+                        />
+                        <button data-cfg-step={f.id} data-dir="1" aria-label="increase">+</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            )}
           </div>
         )
       }
@@ -101,14 +130,16 @@ const meta = getGame(Astro.params.game!);
       const currentValues = (): Record<string, number> =>
         Object.fromEntries(fields.map((f) => [f.id, Number(inputOf(f.id).value)]));
 
-      /** clamp every field to [min, effectiveMax]; returns clean values */
+      /** clamp every field to [min, effectiveMax] on its step grid */
       const clampAll = (): Record<string, number> => {
         const vals = currentValues();
         for (const f of fields) {
           const el = inputOf(f.id);
+          const step = f.step ?? 1;
           const max = Math.min(f.max, f.dynamicMax ? f.dynamicMax(vals) : f.max);
-          let v = Math.round(Number(el.value));
+          let v = Number(el.value);
           if (!Number.isFinite(v)) v = f.default;
+          v = Number((Math.round(v / step) * step).toFixed(2));
           v = Math.min(max, Math.max(f.min, v));
           el.value = String(v);
           el.max = String(max);
@@ -133,8 +164,9 @@ const meta = getGame(Astro.params.game!);
       document.getElementById('config-rows')!.addEventListener('pointerdown', (e) => {
         const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-cfg-step]');
         if (!btn) return;
-        const el = inputOf(btn.dataset.cfgStep!);
-        el.value = String(Number(el.value) + Number(btn.dataset.dir));
+        const field = fields.find((f) => f.id === btn.dataset.cfgStep)!;
+        const el = inputOf(field.id);
+        el.value = String(Number(el.value) + Number(btn.dataset.dir) * (field.step ?? 1));
         save();
       });
       for (const f of fields) {
