@@ -323,6 +323,53 @@ body.game-locked .app-header {
   letter-spacing: 0.05em;
 }
 
+/* ---- intro config fields ---- */
+#config-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cfg-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  font-size: 0.9rem;
+}
+
+.cfg-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cfg-ctrl button {
+  width: 40px;
+  padding: 8px 0;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.cfg-ctrl input {
+  width: 58px;
+  text-align: center;
+  font-size: 1rem;
+  padding: 8px 4px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.cfg-ctrl input::-webkit-outer-spin-button,
+.cfg-ctrl input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 /* ---- game: MOT (ball tracking) ---- */
 .mot-top {
   display: flex;

@@ -1,32 +1,35 @@
 // GAME 2 — Multiple Object Tracking (Pylyshyn paradigm)
 //
 // Round flow: reveal (targets flash 2s, balls static) -> tracking
-// (balls move, all identical) -> select (frozen; tap K balls, confirm)
-// -> results.
+// (balls move, all identical) -> select (frozen; tap the targets,
+// confirm) -> results.
+//
+// The round is configured by the player on the intro screen (persisted
+// per game in settings): total balls, targets ("balls to track", capped
+// at half the total), ball speed (1-10) and ball size (1-10).
 //
 // Physics correctness:
 //  - fixed timestep (fixedStepLoop, 120 steps/s) so ball speed is
 //    identical on 60Hz and 120Hz displays
 //  - elastic circle-circle collisions, equal mass: exchange velocity
 //    components along the collision normal
-//  - after each step every ball's speed is renormalized to the level's
-//    constant speed (collisions + perturbations never accumulate drift)
+//  - after each step every ball's speed is renormalized to the
+//    configured constant speed (collisions + perturbations never
+//    accumulate drift)
 //  - phase timers advance with the accumulated fixed steps, never wall
 //    time, so pausing (tab hidden) can't skip tracking time
 import type { PlayContext } from '../../engine/mount';
 import { GameShell } from '../../engine/shell';
 import { fixedStepLoop, randRange } from '../../engine/timing';
 import { renderResults } from '../../engine/results';
-import { getSettings, setSetting } from '../../lib/storage';
 import { deviceTypeFromEvent } from '../../lib/device';
 import { strings } from '../../lib/strings';
 
 const STEP_MS = 1000 / 120;
 const REVEAL_MS = 2000;
+const TRACK_MS = 8000;
 const PERTURB_INTERVAL_MS = 500; // avg time between heading nudges
 const PERTURB_MAX_RAD = 0.35;
-const LEVEL_KEY = 'mot.level';
-const STREAK_KEY = 'mot.perfectStreak';
 
 const ui = strings.games.mot.ui;
 
@@ -41,55 +44,23 @@ interface Ball {
   nextPerturb: number; // countdown in ms of simulated time
 }
 
-interface LevelParams {
-  balls: number;
-  targets: number;
-  /** speed as a fraction of min(canvas w,h) per second */
-  speed: number;
-  durationMs: number;
-  occluder: boolean;
-}
+/** Map the user's 1-10 speed setting to a fraction of min(w,h) per second. */
+const speedFraction = (setting: number): number => 0.055 * setting;
+/** Map the user's 1-10 size setting to a radius fraction of min(w,h). */
+const radiusFraction = (setting: number): number => 0.015 + 0.005 * setting;
 
-// Staircase dimensions grow in spec order: targets -> speed -> total
-// balls -> duration; occlusions join at level 9.
-export function levelParams(level: number): LevelParams {
-  const p = { balls: 8, targets: 3, speedMul: 1, durationMs: 8000 };
-  const bumps = ['targets', 'speed', 'balls', 'duration'] as const;
-  for (let l = 2; l <= level; l++) {
-    switch (bumps[(l - 2) % bumps.length]) {
-      case 'targets':
-        if (p.targets < Math.min(7, Math.floor(p.balls / 2))) p.targets++;
-        else p.speedMul += 0.12;
-        break;
-      case 'speed':
-        p.speedMul += 0.15;
-        break;
-      case 'balls':
-        if (p.balls < 16) p.balls += 2;
-        else p.speedMul += 0.12;
-        break;
-      case 'duration':
-        if (p.durationMs < 14000) p.durationMs += 1500;
-        else p.speedMul += 0.12;
-        break;
-    }
-  }
-  return {
-    balls: p.balls,
-    targets: p.targets,
-    speed: 0.22 * Math.min(p.speedMul, 2.6),
-    durationMs: p.durationMs,
-    occluder: level >= 9,
+export function run(ctx: PlayContext): void {
+  const { stage, meta, difficulty, config } = ctx;
+
+  // config values arrive clamped by the intro screen; clamp again anyway
+  const clamp = (v: unknown, min: number, max: number, dflt: number): number => {
+    const n = Math.round(Number(v));
+    return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : dflt;
   };
-}
-
-export async function run(ctx: PlayContext): Promise<void> {
-  const { stage, meta, difficulty } = ctx;
-
-  const settings = await getSettings();
-  const level = Math.max(1, Number(settings[LEVEL_KEY]) || 1);
-  let perfectStreak = Math.max(0, Number(settings[STREAK_KEY]) || 0);
-  const params = levelParams(level);
+  const totalBalls = clamp(config['total'], 2, 20, 8);
+  const targetCount = clamp(config['targets'], 1, Math.max(1, Math.floor(totalBalls / 2)), 3);
+  const speedSetting = clamp(config['speed'], 1, 10, 4);
+  const sizeSetting = clamp(config['size'], 1, 10, 5);
 
   const shell = new GameShell({
     stage,
@@ -101,7 +72,7 @@ export async function run(ctx: PlayContext): Promise<void> {
   // ---- DOM ----
   stage.innerHTML = `
     <div class="mot-top">
-      <span class="mono">${ui.level(level)}</span>
+      <span class="mono">${targetCount} / ${totalBalls}</span>
       <span class="mot-hint dim"></span>
     </div>
     <canvas class="mot-canvas"></canvas>
@@ -118,8 +89,6 @@ export async function run(ctx: PlayContext): Promise<void> {
   const COL_BALL = css.getPropertyValue('--game-ball').trim() || '#6b7488';
   const COL_TARGET = css.getPropertyValue('--game-ball-target').trim() || '#ffc24f';
   const COL_ACCENT = css.getPropertyValue('--accent').trim() || '#4f8cff';
-  const COL_OCCLUDER = css.getPropertyValue('--bg-elevated').trim() || '#171a21';
-  const COL_BORDER = css.getPropertyValue('--border').trim() || '#262b38';
 
   // ---- canvas sizing (locked at round start) ----
   const dpr = Math.min(devicePixelRatio || 1, 2);
@@ -139,24 +108,26 @@ export async function run(ctx: PlayContext): Promise<void> {
   let phase: 'reveal' | 'tracking' | 'select' = 'reveal';
   let phaseElapsed = 0; // simulated ms, advances only in update()
   const minDim = (): number => Math.min(W, H);
-  const occluderR = (): number => minDim() * 0.16;
 
   const spawnBalls = (): void => {
-    const r = Math.min(Math.max(minDim() * 0.035, 12), 24);
-    const speed = params.speed * minDim(); // px per second
+    // radius from the size setting; hard px clamp keeps 20 large balls
+    // playable on small screens and tiny balls tappable
+    const r = Math.min(Math.max(minDim() * radiusFraction(sizeSetting), 7), 56);
+    const speed = speedFraction(speedSetting) * minDim(); // px per second
     balls = [];
-    for (let i = 0; i < params.balls; i++) {
+    for (let i = 0; i < totalBalls; i++) {
       let x = 0;
       let y = 0;
-      let ok = false;
-      for (let tries = 0; tries < 400 && !ok; tries++) {
-        x = randRange(r, W - r);
-        y = randRange(r, H - r);
-        ok = balls.every((b) => Math.hypot(b.x - x, b.y - y) > r * 2.4);
-        // don't spawn hidden behind the occluder during the reveal
-        if (ok && params.occluder) {
-          ok = Math.hypot(x - W / 2, y - H / 2) > occluderR() + r;
+      // rejection-sample non-overlapping spawns; relax spacing if the
+      // board is too crowded for the requested count/size
+      for (let spacing = 2.4; spacing >= 1.0; spacing -= 0.35) {
+        let ok = false;
+        for (let tries = 0; tries < 300 && !ok; tries++) {
+          x = randRange(r, Math.max(r + 1, W - r));
+          y = randRange(r, Math.max(r + 1, H - r));
+          ok = balls.every((b) => Math.hypot(b.x - x, b.y - y) > r * spacing);
         }
+        if (ok) break;
       }
       const angle = randRange(0, Math.PI * 2);
       balls.push({
@@ -165,7 +136,7 @@ export async function run(ctx: PlayContext): Promise<void> {
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
         r,
-        isTarget: i < params.targets,
+        isTarget: i < targetCount,
         selected: false,
         nextPerturb: randRange(0, PERTURB_INTERVAL_MS * 2),
       });
@@ -186,7 +157,7 @@ export async function run(ctx: PlayContext): Promise<void> {
     if (phase !== 'tracking') return;
 
     const dt = stepMs / 1000;
-    const speed = params.speed * minDim();
+    const speed = speedFraction(speedSetting) * minDim();
 
     for (const b of balls) {
       // random heading perturbation so paths aren't predictable
@@ -258,13 +229,12 @@ export async function run(ctx: PlayContext): Promise<void> {
       }
     }
 
-    if (phaseElapsed >= params.durationMs) enterSelect();
+    if (phaseElapsed >= TRACK_MS) enterSelect();
   };
 
   const enterSelect = (): void => {
     phase = 'select';
     phaseElapsed = 0;
-    hintEl.textContent = ui.select(params.targets);
     confirmBtn.hidden = false;
     updateConfirm();
   };
@@ -289,22 +259,13 @@ export async function run(ctx: PlayContext): Promise<void> {
         ctx2d.stroke();
       }
     }
-    if (params.occluder) {
-      ctx2d.beginPath();
-      ctx2d.arc(W / 2, H / 2, occluderR(), 0, Math.PI * 2);
-      ctx2d.fillStyle = COL_OCCLUDER;
-      ctx2d.fill();
-      ctx2d.lineWidth = 1;
-      ctx2d.strokeStyle = COL_BORDER;
-      ctx2d.stroke();
-    }
   };
 
   // ---- selection input ----
   const selectedCount = (): number => balls.filter((b) => b.selected).length;
   const updateConfirm = (): void => {
-    confirmBtn.disabled = selectedCount() !== params.targets;
-    hintEl.textContent = `${ui.select(params.targets)} (${selectedCount()}/${params.targets})`;
+    confirmBtn.disabled = selectedCount() !== targetCount;
+    hintEl.textContent = `${ui.select(targetCount)} (${selectedCount()}/${targetCount})`;
   };
 
   const onPointerDown = (e: PointerEvent): void => {
@@ -318,13 +279,13 @@ export async function run(ctx: PlayContext): Promise<void> {
     let bestD = Infinity;
     for (const b of balls) {
       const d = Math.hypot(b.x - x, b.y - y);
-      if (d < b.r * 1.6 && d < bestD) {
+      if (d < Math.max(b.r * 1.6, 22) && d < bestD) {
         best = b;
         bestD = d;
       }
     }
     if (!best) return;
-    if (!best.selected && selectedCount() >= params.targets) return;
+    if (!best.selected && selectedCount() >= targetCount) return;
     best.selected = !best.selected;
     updateConfirm();
   };
@@ -333,46 +294,26 @@ export async function run(ctx: PlayContext): Promise<void> {
     loop.cancel();
     canvas.removeEventListener('pointerdown', onPointerDown);
     const correct = balls.filter((b) => b.selected && b.isTarget).length;
-    const perfect = correct === params.targets;
+    const accuracy = (correct / targetCount) * 100;
 
-    // staircase: 2 perfect rounds in a row -> up; any miss -> down
-    let nextLevel = level;
-    if (perfect) {
-      perfectStreak++;
-      if (perfectStreak >= 2) {
-        nextLevel = level + 1;
-        perfectStreak = 0;
-      }
-    } else {
-      nextLevel = Math.max(1, level - 1);
-      perfectStreak = 0;
-    }
-    await setSetting(LEVEL_KEY, nextLevel);
-    await setSetting(STREAK_KEY, perfectStreak);
-
-    // score = level; valid only for perfect rounds so "personal best"
-    // means: highest level with a perfect round
     await shell.finish({
-      score: level,
-      valid: perfect,
+      score: accuracy,
+      valid: true,
       params: {
         correct,
-        targets: params.targets,
-        balls: params.balls,
-        durationMs: params.durationMs,
-        occluder: params.occluder,
-        nextLevel,
+        targets: targetCount,
+        balls: totalBalls,
+        speed: speedSetting,
+        size: sizeSetting,
+        durationMs: TRACK_MS,
       },
     });
 
     renderResults(stage, {
       meta,
-      score: perfect ? level : null,
-      scoreText: `${correct} / ${params.targets}`,
-      stats: [
-        { label: ui.thisLevel, value: String(level) },
-        { label: ui.nextLevel, value: String(nextLevel) },
-      ],
+      score: accuracy,
+      scoreText: `${correct} / ${targetCount}`,
+      stats: [{ label: ui.correct, value: `${Math.round(accuracy)}%` }],
     });
   };
 

@@ -8,6 +8,17 @@ export interface DifficultyOption {
   label: string;
 }
 
+/** A user-tunable number on the intro screen (± buttons or typing). */
+export interface ConfigField {
+  id: string;
+  label: string;
+  min: number;
+  max: number;
+  default: number;
+  /** dependent upper bound, evaluated against the current values */
+  dynamicMax?: (values: Record<string, number>) => number;
+}
+
 export interface GameMeta {
   id: string;
   name: string;
@@ -21,6 +32,8 @@ export interface GameMeta {
   formatScore: (score: number) => string;
   implemented: boolean;
   difficulties: DifficultyOption[];
+  /** optional per-game settings rendered on the intro screen */
+  config?: ConfigField[];
 }
 
 const s = strings.games;
@@ -45,11 +58,25 @@ export const games: GameMeta[] = [
     short: s.mot.short,
     how: s.mot.how,
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="8" r="2.6"/><circle cx="16.5" cy="6.5" r="2.6"/><circle cx="12" cy="16" r="2.6"/><path d="M9 10.5l1.5 3M14.8 8.5L13.4 14"/></svg>`,
-    scoreUnit: 'level',
+    scoreUnit: '%',
     lowerIsBetter: false,
-    formatScore: (v) => `Level ${Math.round(v)}`,
+    formatScore: (v) => `${Math.round(v)}%`,
     implemented: true,
-    difficulties: [{ id: 'staircase', label: d.normal }],
+    difficulties: [],
+    config: [
+      { id: 'total', label: s.mot.ui.cfgTotal, min: 2, max: 20, default: 8 },
+      {
+        id: 'targets',
+        label: s.mot.ui.cfgTargets,
+        min: 1,
+        max: 10,
+        default: 3,
+        // never more than half the balls (odd totals round down)
+        dynamicMax: (v) => Math.max(1, Math.floor((v['total'] ?? 8) / 2)),
+      },
+      { id: 'speed', label: s.mot.ui.cfgSpeed, min: 1, max: 10, default: 4 },
+      { id: 'size', label: s.mot.ui.cfgSize, min: 1, max: 10, default: 5 },
+    ],
   },
   {
     id: 'go-nogo',

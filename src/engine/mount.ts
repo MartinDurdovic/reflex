@@ -5,6 +5,8 @@ import { getGame, type GameMeta } from '../games/registry';
 export interface PlayContext {
   meta: GameMeta;
   difficulty: string;
+  /** values of the intro screen's config fields (empty if none) */
+  config: Record<string, number>;
   stage: HTMLElement;
 }
 
@@ -22,7 +24,11 @@ export function bindIntro(
     const sel = document.querySelector<HTMLElement>(
       '#difficulty-row button.primary'
     );
-    const difficulty = sel?.dataset.difficulty ?? 'standard';
+    const difficulty = sel?.dataset.difficulty ?? 'custom';
+    const config: Record<string, number> = {};
+    for (const el of document.querySelectorAll<HTMLInputElement>('[data-cfg]')) {
+      config[el.dataset.cfg!] = Number(el.value);
+    }
     intro.style.display = 'none';
 
     const stage = document.createElement('div');
@@ -30,6 +36,6 @@ export function bindIntro(
     // no long-press context menu / text selection on the play surface
     stage.addEventListener('contextmenu', (ev) => ev.preventDefault());
     document.body.appendChild(stage);
-    run({ meta: getGame(gameId), difficulty, stage });
+    run({ meta: getGame(gameId), difficulty, config, stage });
   });
 }
