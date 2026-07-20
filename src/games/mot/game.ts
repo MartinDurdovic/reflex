@@ -101,14 +101,31 @@ export function run(ctx: PlayContext): void {
   const COL_GOOD = css.getPropertyValue('--success').trim() || '#3ecf6e';
   const COL_BAD = css.getPropertyValue('--danger').trim() || '#ff4f5e';
 
-  // ---- canvas sizing (locked at round start) ----
+  // ---- canvas sizing ----
   const dpr = Math.min(devicePixelRatio || 1, 2);
   let W = 0;
   let H = 0;
-  const sizeCanvas = (): void => {
+  // Size the canvas to its box; if the box changed while a round is
+  // live (resize / in-browser orientation change), rescale ball
+  // geometry into the new space so positions and tap hit-testing stay
+  // aligned. Everything is kept in CSS px; the dpr transform maps to
+  // the backing store.
+  const layout = (): void => {
     const box = canvas.getBoundingClientRect();
-    W = box.width;
-    H = box.height;
+    const newW = box.width;
+    const newH = box.height;
+    if (W > 0 && H > 0 && (newW !== W || newH !== H) && balls.length) {
+      const sx = newW / W;
+      const sy = newH / H;
+      const sMin = Math.min(sx, sy);
+      for (const b of balls) {
+        b.x *= sx;
+        b.y *= sy;
+        b.r *= sMin;
+      }
+    }
+    W = newW;
+    H = newH;
     canvas.width = Math.round(W * dpr);
     canvas.height = Math.round(H * dpr);
     ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -330,6 +347,7 @@ export function run(ctx: PlayContext): void {
 
   const finishRound = async (): Promise<void> => {
     loop.cancel();
+    window.removeEventListener('resize', layout);
     canvas.removeEventListener('pointerdown', onPointerDown);
     const accuracy = (roundCorrect / targetCount) * 100;
 
@@ -351,6 +369,10 @@ export function run(ctx: PlayContext): void {
       meta,
       score: accuracy,
       scoreText: `${roundCorrect} / ${targetCount}`,
+      // accuracy is only comparable at the same tracking load; this also
+      // excludes legacy staircase attempts (which have no `balls` param)
+      comparable: (a) =>
+        a.params?.['balls'] === totalBalls && a.params?.['targets'] === targetCount,
       stats: [{ label: ui.correct, value: `${Math.round(accuracy)}%` }],
     });
   };
@@ -365,13 +387,17 @@ export function run(ctx: PlayContext): void {
   let loop: ReturnType<typeof fixedStepLoop>;
   shell.begin({
     onStart: () => {
-      sizeCanvas();
+      layout();
       spawnBalls();
+      window.addEventListener('resize', layout);
       hintEl.textContent = ui.memorize;
       loop = fixedStepLoop({ stepMs: STEP_MS, update, render });
     },
     onPause: () => loop?.pause(),
     onResume: () => loop?.resume(),
-    onAbort: () => loop?.cancel(),
+    onAbort: () => {
+      loop?.cancel();
+      window.removeEventListener('resize', layout);
+    },
   });
 }

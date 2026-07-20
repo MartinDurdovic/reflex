@@ -143,6 +143,8 @@ export function run(ctx: PlayContext): void {
     renderResults(stage, {
       meta,
       score: longestCorrect > 0 ? longestCorrect : null,
+      // forward and reverse are different tasks — compare like with like
+      comparable: (a) => a.difficulty === difficulty,
       stats: [
         { label: ui.mode, value: reverse ? ui.reverse : ui.forward },
         { label: ui.failedAt, value: String(length) },

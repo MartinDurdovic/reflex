@@ -23,9 +23,17 @@ import { strings } from '../../lib/strings';
 
 const TOTAL = 30;
 const GO_COUNT = 22; // ~75%
+const NOGO_COUNT = TOTAL - GO_COUNT; // 8
 const ISI_MIN_MS = 800;
 const ISI_MAX_MS = 2500;
 const WINDOW_MS = 800;
+// A GO answered faster than this was anticipated, not reacted to — it
+// doesn't count as a real hit (and can't inflate the average).
+const RT_FLOOR_MS = 100;
+// The score (avg RT) is only meaningful if the player actually withheld
+// on NO-GO trials. Tapping through everything (max false alarms) is not
+// a fast reaction — it's no inhibition, and is recorded as a DNF.
+const MAX_FALSE_ALARMS = Math.floor(NOGO_COUNT / 2); // > this ⇒ invalid
 
 const ui = strings.games['go-nogo'].ui;
 
@@ -56,6 +64,7 @@ export function run(ctx: PlayContext): void {
 
   let index = -1; // current stimulus index
   let phase: 'isi' | 'stimulus' | 'done' = 'isi';
+  let started = false; // false during the 3-2-1 countdown
   let onset = 0;
   let resolved = true; // current stimulus already answered/timed out?
   let pending: CancelHandle[] = [];
@@ -64,6 +73,7 @@ export function run(ctx: PlayContext): void {
   let falseAlarms = 0;
   let misses = 0;
   let premature = 0; // taps during ISI (not scored, but recorded)
+  let anticipations = 0; // sub-floor GO taps (in flight before onset)
 
   const cancelPending = (): void => {
     for (const h of pending) h.cancel();
@@ -105,7 +115,7 @@ export function run(ctx: PlayContext): void {
   };
 
   const onPointerDown = (e: PointerEvent): void => {
-    if (!e.isPrimary || phase === 'done') return;
+    if (!e.isPrimary || !started || phase === 'done') return;
     shell.noteDevice(deviceTypeFromEvent(e));
 
     if (phase === 'isi') {
@@ -117,12 +127,15 @@ export function run(ctx: PlayContext): void {
     let press = e.timeStamp;
     const t = now();
     if (!(press > 0) || Math.abs(press - t) > 5000) press = t;
-    const rt = Math.max(0, press - onset);
+    const rt = press - onset;
     if (rt > WINDOW_MS) return; // let the scheduled timeout settle it
 
     resolved = true;
     if (kinds[index] === 'go') {
-      reactionTimes.push(rt);
+      // sub-floor taps were already in flight before the stimulus —
+      // they're anticipations, not reactions, so they don't score
+      if (rt < RT_FLOOR_MS) anticipations++;
+      else reactionTimes.push(rt);
     } else {
       falseAlarms++;
     }
@@ -134,21 +147,27 @@ export function run(ctx: PlayContext): void {
     cancelPending();
     stage.removeEventListener('pointerdown', onPointerDown);
     const avg = reactionTimes.length ? mean(reactionTimes) : 0;
+    // a fast average only counts if the player actually inhibited on
+    // NO-GO trials; too many false alarms means they tapped through
+    const inhibited = falseAlarms <= MAX_FALSE_ALARMS;
+    const valid = reactionTimes.length > 0 && inhibited;
     await shell.finish({
       score: avg,
-      valid: reactionTimes.length > 0, // no correct GO at all -> DNF
+      valid,
       params: {
         goTrials: GO_COUNT,
-        nogoTrials: TOTAL - GO_COUNT,
+        nogoTrials: NOGO_COUNT,
         hits: reactionTimes.length,
         falseAlarms,
         misses,
         premature,
+        anticipations,
       },
     });
     renderResults(stage, {
       meta,
-      score: reactionTimes.length ? avg : null,
+      score: valid ? avg : null,
+      scoreText: valid ? undefined : reactionTimes.length ? ui.noInhibition : undefined,
       stats: [
         { label: ui.falseAlarms, value: String(falseAlarms) },
         { label: ui.misses, value: String(misses) },
@@ -160,7 +179,10 @@ export function run(ctx: PlayContext): void {
   stage.addEventListener('pointerdown', onPointerDown);
 
   shell.begin({
-    onStart: nextStimulus,
+    onStart: () => {
+      started = true;
+      nextStimulus();
+    },
     onAbort: () => {
       cancelPending();
       stage.removeEventListener('pointerdown', onPointerDown);

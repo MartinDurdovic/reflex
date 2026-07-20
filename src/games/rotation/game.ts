@@ -176,8 +176,8 @@ export function run(ctx: PlayContext): void {
       <div class="rot-view"><canvas></canvas></div>
     </div>
     <div class="rot-buttons">
-      <button data-answer="same">${ui.same}</button>
-      <button data-answer="different">${ui.different}</button>
+      <button data-answer="same" disabled>${ui.same}</button>
+      <button data-answer="different" disabled>${ui.different}</button>
     </div>`;
   const trialEl = stage.querySelector<HTMLElement>('[data-trial]')!;
   const timerEl = stage.querySelector<HTMLElement>('[data-timer]')!;
@@ -233,7 +233,8 @@ export function run(ctx: PlayContext): void {
   };
 
   const answer = (said: 'same' | 'different' | 'timeout'): void => {
-    if (phase !== 'trial') return;
+    // ignore any tap before the first trial is actually on screen
+    if (phase !== 'trial' || trialIndex < 0) return;
     phase = 'feedback';
     const wasCorrect =
       said !== 'timeout' && (said === 'different') === isDifferent;
@@ -266,6 +267,8 @@ export function run(ctx: PlayContext): void {
       meta,
       score: accuracy,
       scoreText: `${correct} / ${TRIALS}`,
+      // 7/10/13 cubes are distinct difficulties — don't cross-compare
+      comparable: (a) => a.difficulty === difficulty,
       stats: [
         {
           label: ui.avgTime,

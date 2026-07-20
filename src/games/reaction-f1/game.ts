@@ -38,6 +38,9 @@ const HOLD_MAX_MS = 3000;
 const STARTS_PER_SESSION = 5;
 const RESULT_HOLD_MS = 1600; // how long each start's time stays on screen
 const PRE_SEQUENCE_MS = 600; // quiet gap before column 1 of each start
+// A visual reaction faster than this is physiologically impossible —
+// the light was anticipated, not reacted to. Treated as a false start.
+const ANTICIPATION_FLOOR_MS = 100;
 
 type Phase =
   | 'between' // gap before/after a start; taps ignored
@@ -151,12 +154,12 @@ export function run(ctx: PlayContext): void {
     nextOrFinish();
   };
 
-  const recordJumpStart = async (): Promise<void> => {
+  const recordJumpStart = async (reason: 'jump' | 'anticipated'): Promise<void> => {
     phase = 'between';
     cancelPending();
     setLights(0);
     jumpStarts++;
-    msgEl.textContent = ui.jumpStart;
+    msgEl.textContent = reason === 'anticipated' ? ui.tooSoon : ui.jumpStart;
     msgEl.className = 'f1-msg jump';
     await saveAttempt({
       testId: meta.id,
@@ -164,7 +167,7 @@ export function run(ctx: PlayContext): void {
       score: 0,
       valid: false, // DNF — excluded from averages and bests
       difficulty,
-      params: { sessionId, startIndex, jumpStart: true },
+      params: { sessionId, startIndex, jumpStart: true, reason },
       deviceType: shell.deviceType,
     });
     nextOrFinish();
@@ -179,6 +182,9 @@ export function run(ctx: PlayContext): void {
     renderResults(stage, {
       meta,
       score: best,
+      // this session appended one attempt per successful start; exclude
+      // exactly those from the prior baseline so PB/avg compare fairly
+      sessionSize: valid.length,
       stats: [
         {
           label: ui.sessionAvg,
@@ -201,7 +207,7 @@ export function run(ctx: PlayContext): void {
     shell.noteDevice(deviceTypeFromEvent(e));
 
     if (phase === 'sequence' || phase === 'armed') {
-      recordJumpStart();
+      recordJumpStart('jump');
       return;
     }
     if (phase !== 'go') return; // between starts / done — ignore
@@ -211,7 +217,13 @@ export function run(ctx: PlayContext): void {
     let press = e.timeStamp;
     const t = now();
     if (!(press > 0) || Math.abs(press - t) > 5000) press = t; // sanity net
-    const rt = Math.max(0, press - tOut);
+    const rt = press - tOut;
+    // a "reaction" below the human floor means the tap was already in
+    // flight before the lights went out — a false start, not a score
+    if (rt < ANTICIPATION_FLOOR_MS) {
+      recordJumpStart('anticipated');
+      return;
+    }
     recordReaction(rt);
   };
 

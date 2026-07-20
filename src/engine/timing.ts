@@ -48,30 +48,38 @@ export function fixedStepLoop(opts: {
   let last = now();
   let acc = 0;
   let paused = false;
+  let stopped = false;
 
   const frame = () => {
     const t = now();
     // clamp: after a jank/pause spike, don't run a physics avalanche
     acc = Math.min(acc + (t - last), 250);
     last = t;
-    while (acc >= stepMs) {
+    // update() may call cancel()/pause() on this very loop;
+    // cancelAnimationFrame can't cancel the currently-executing
+    // callback, so the flags are what actually stops the loop here
+    while (acc >= stepMs && !stopped && !paused) {
       update(stepMs);
       acc -= stepMs;
     }
+    if (stopped || paused) return;
     render(acc / stepMs);
     raf = requestAnimationFrame(frame);
   };
   raf = requestAnimationFrame(frame);
 
   return {
-    cancel: () => cancelAnimationFrame(raf),
+    cancel: () => {
+      stopped = true;
+      cancelAnimationFrame(raf);
+    },
     pause() {
-      if (paused) return;
+      if (paused || stopped) return;
       paused = true;
       cancelAnimationFrame(raf);
     },
     resume() {
-      if (!paused) return;
+      if (!paused || stopped) return;
       paused = false;
       last = now(); // don't count paused time into the accumulator
       acc = 0;

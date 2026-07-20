@@ -124,8 +124,53 @@ const testIndex = String(games.findIndex((g) => g.id === meta.id) + 1).padStart(
     import { bindIntro } from '../../engine/mount';
     import type { PlayContext } from '../../engine/mount';
     import { getGame } from '../../games/registry';
-    import { getSettings, setSetting } from '../../lib/storage';
-    import { summarizeTest } from '../../lib/stats';
+    import { getSettings, setSetting, getAttempts } from '../../lib/storage';
+    import type { Attempt } from '../../lib/storage';
+    import { summarize } from '../../lib/stats';
+
+    const introEl = document.getElementById('intro') as HTMLElement;
+    const cfgGameId = introEl.dataset.game!;
+    const cfgMeta = getGame(cfgGameId);
+
+    // ---- personal record strip (best/avg scoped to the CURRENT
+    // difficulty / MOT load, so the preview matches what you'll be
+    // rated against; total-attempt count stays test-wide) ----
+    let attempts: Attempt[] = [];
+    const cfgVal = (id: string): number =>
+      Number(document.querySelector<HTMLInputElement>(`[data-cfg="${id}"]`)?.value);
+    const currentDifficulty = (): string =>
+      document.querySelector<HTMLElement>('#difficulty-row button.primary')?.dataset
+        .difficulty ?? '';
+    const comparablePred = (): ((a: Attempt) => boolean) => {
+      if (cfgGameId === 'mot') {
+        const balls = cfgVal('total');
+        const targets = cfgVal('targets');
+        return (a) => a.params?.['balls'] === balls && a.params?.['targets'] === targets;
+      }
+      if (cfgMeta.difficulties.length > 1) {
+        const d = currentDifficulty();
+        return (a) => a.difficulty === d;
+      }
+      return () => true;
+    };
+    const renderStrip = (): void => {
+      const strip = document.getElementById('record-strip')!;
+      if (!attempts.length) {
+        strip.hidden = true;
+        return;
+      }
+      strip.hidden = false;
+      const sum = summarize(attempts.filter(comparablePred()), cfgMeta.lowerIsBetter);
+      strip.querySelector('[data-rec-best]')!.textContent =
+        sum.best !== null ? cfgMeta.formatScore(sum.best) : '—';
+      strip.querySelector('[data-rec-avg]')!.textContent =
+        sum.average !== null ? cfgMeta.formatScore(sum.average) : '—';
+      strip.querySelector('[data-rec-count]')!.textContent = String(attempts.length);
+    };
+    getAttempts(cfgGameId).then((a) => {
+      attempts = a;
+      renderStrip();
+    });
 
     // difficulty selector toggle (game modules read the pressed button)
     const row = document.getElementById('difficulty-row');
@@ -136,23 +181,7 @@ const testIndex = String(games.findIndex((g) => g.id === meta.id) + 1).padStart(
         b.classList.toggle('primary', b === btn);
         b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
       }
-    });
-
-    // ---- per-game config fields (± / typed), persisted per game ----
-    const introEl = document.getElementById('intro') as HTMLElement;
-    const cfgGameId = introEl.dataset.game!;
-    const cfgMeta = getGame(cfgGameId);
-
-    // personal record strip (hidden until this test has attempts)
-    summarizeTest(cfgGameId, cfgMeta.lowerIsBetter).then((sum) => {
-      if (!sum.count) return;
-      const strip = document.getElementById('record-strip')!;
-      strip.hidden = false;
-      strip.querySelector('[data-rec-best]')!.textContent =
-        sum.best !== null ? cfgMeta.formatScore(sum.best) : '—';
-      strip.querySelector('[data-rec-avg]')!.textContent =
-        sum.average !== null ? cfgMeta.formatScore(sum.average) : '—';
-      strip.querySelector('[data-rec-count]')!.textContent = String(sum.count);
+      renderStrip();
     });
     if (cfgMeta.config) {
       const CFG_KEY = `${cfgGameId}.config`;
@@ -180,7 +209,10 @@ const testIndex = String(games.findIndex((g) => g.id === meta.id) + 1).padStart(
         return vals;
       };
 
-      const save = () => setSetting(CFG_KEY, clampAll());
+      const save = () => {
+        setSetting(CFG_KEY, clampAll());
+        renderStrip(); // MOT best/avg are scoped to the current load
+      };
 
       // restore saved preferences (defaults are pre-rendered)
       getSettings().then((s) => {
@@ -191,6 +223,7 @@ const testIndex = String(games.findIndex((g) => g.id === meta.id) + 1).padStart(
           }
         }
         clampAll();
+        renderStrip();
       });
 
       document.getElementById('config-rows')!.addEventListener('pointerdown', (e) => {

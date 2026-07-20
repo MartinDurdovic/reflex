@@ -65,6 +65,7 @@ export const strings = {
     average: 'Average',
     attempts: 'attempts',
     failures: 'failed',
+    motLoad: (balls: number, targets: number) => `${balls} balls · track ${targets}`,
   },
   settings: {
     title: 'Settings',
@@ -87,6 +88,7 @@ export const strings = {
         startCounter: (n: number, total: number) => `Start ${n} / ${total}`,
         wait: 'Wait for lights out…',
         jumpStart: 'JUMP START',
+        tooSoon: 'TOO SOON',
         jumpStarts: 'Jump starts',
         sessionBest: 'Session best',
         sessionAvg: 'Session average',
@@ -129,6 +131,7 @@ export const strings = {
       ui: {
         falseAlarms: 'False alarms',
         misses: 'Misses',
+        noInhibition: 'DNF · too many false alarms',
       },
     },
     'digit-span': {

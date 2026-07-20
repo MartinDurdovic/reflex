@@ -13,8 +13,9 @@ import { strings } from '../lib/strings';
   </main>
 
   <script>
-    import { games } from '../games/registry';
+    import { games, type GameMeta } from '../games/registry';
     import { getAllAttempts } from '../lib/storage';
+    import type { Attempt } from '../lib/storage';
     import { summarize, dailyStreak } from '../lib/stats';
     import { historyChartSvg } from '../engine/chart';
     import { strings } from '../lib/strings';
@@ -22,45 +23,84 @@ import { strings } from '../lib/strings';
     const esc = (s: string): string =>
       s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+    interface Group {
+      label: string; // '' for single-group tests
+      items: Attempt[];
+    }
+
+    // Split a test's attempts into fairly-comparable groups: by
+    // difficulty where the test has several, by tracking load for MOT
+    // (which also drops legacy staircase attempts that carry no `balls`).
+    const groupsFor = (g: GameMeta, list: Attempt[]): Group[] => {
+      if (g.difficulties.length > 1) {
+        return g.difficulties
+          .map((d) => ({ label: d.label, items: list.filter((a) => a.difficulty === d.id) }))
+          .filter((grp) => grp.items.length);
+      }
+      if (g.id === 'mot') {
+        const byLoad = new Map<string, Attempt[]>();
+        for (const a of list) {
+          const balls = a.params?.['balls'];
+          const targets = a.params?.['targets'];
+          if (typeof balls !== 'number' || typeof targets !== 'number') continue;
+          const key = `${balls}/${targets}`;
+          const bucket = byLoad.get(key);
+          if (bucket) bucket.push(a);
+          else byLoad.set(key, [a]);
+        }
+        return [...byLoad.entries()]
+          .sort((a, b) => b[1].length - a[1].length)
+          .map(([key, items]) => {
+            const [balls, targets] = key.split('/').map(Number);
+            return { label: strings.stats.motLoad(balls!, targets!), items };
+          });
+      }
+      return [{ label: '', items: list }];
+    };
+
     getAllAttempts().then((all) => {
       const attempts = Object.values(all).flat();
       if (!attempts.length) return;
 
       // ---- overall summary ----
+      const streak = dailyStreak(attempts);
       document.getElementById('stats-summary')!.innerHTML = `
         <div class="readout-row">
           <span>${esc(strings.stats.totalAttempts)}<b>${attempts.length}</b></span>
-          <span>${esc(strings.stats.streak)}<b>${dailyStreak(attempts)} ${esc(dailyStreak(attempts) === 1 ? strings.stats.day : strings.stats.days)}</b></span>
+          <span>${esc(strings.stats.streak)}<b>${streak} ${esc(streak === 1 ? strings.stats.day : strings.stats.days)}</b></span>
         </div>`;
 
-      // ---- per-test sections ----
+      // ---- per-test, per-group sections ----
       const container = document.getElementById('stats-tests')!;
       for (const g of games) {
         const list = all[g.id] ?? [];
         if (!list.length) continue;
-        const sum = summarize(list, g.lowerIsBetter);
-        const valid = list.filter((a) => a.valid);
-        const failures = list.length - valid.length;
+        for (const grp of groupsFor(g, list)) {
+          const sum = summarize(grp.items, g.lowerIsBetter);
+          const valid = grp.items.filter((a) => a.valid);
+          const failures = grp.items.length - valid.length;
+          const title = grp.label ? `${g.name} · ${grp.label}` : g.name;
 
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.style.marginTop = 'var(--gap)';
-        card.innerHTML = `
-          <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px">
-            <h2 style="font-size:0.95rem;margin:0">${esc(g.name)}</h2>
-            <span class="dim mono" style="font-size:0.72rem;letter-spacing:0.08em;text-transform:uppercase">
-              ${list.length} ${esc(strings.stats.attempts)}${failures ? ` · ${failures} ${esc(strings.stats.failures)}` : ''}
-            </span>
-          </div>
-          <div class="readout-row" style="margin:12px 0">
-            <span>${esc(strings.stats.best)}<b>${sum.best !== null ? esc(g.formatScore(sum.best)) : '—'}</b></span>
-            <span>${esc(strings.stats.average)}<b>${sum.average !== null ? esc(g.formatScore(sum.average)) : '—'}</b></span>
-          </div>
-          ${historyChartSvg(
-            valid.map((a) => ({ timestamp: a.timestamp, score: a.score })),
-            g.formatScore
-          )}`;
-        container.appendChild(card);
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.style.marginTop = 'var(--gap)';
+          card.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px">
+              <h2 style="font-size:0.95rem;margin:0">${esc(title)}</h2>
+              <span class="dim mono" style="font-size:0.72rem;letter-spacing:0.08em;text-transform:uppercase">
+                ${grp.items.length} ${esc(strings.stats.attempts)}${failures ? ` · ${failures} ${esc(strings.stats.failures)}` : ''}
+              </span>
+            </div>
+            <div class="readout-row" style="margin:12px 0">
+              <span>${esc(strings.stats.best)}<b>${sum.best !== null ? esc(g.formatScore(sum.best)) : '—'}</b></span>
+              <span>${esc(strings.stats.average)}<b>${sum.average !== null ? esc(g.formatScore(sum.average)) : '—'}</b></span>
+            </div>
+            ${historyChartSvg(
+              valid.map((a) => ({ timestamp: a.timestamp, score: a.score })),
+              g.formatScore
+            )}`;
+          container.appendChild(card);
+        }
       }
     });
   </script>

@@ -106,7 +106,8 @@ export const games: GameMeta[] = [
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 5v14M5 8h6M13 5h6M13 12h6M13 19h6"/></svg>`,
     scoreUnit: 'digits',
     lowerIsBetter: false,
-    formatScore: (v) => `${v} digits`,
+    // integer span, but averages are fractional — keep one decimal then
+    formatScore: (v) => `${Number.isInteger(v) ? v : v.toFixed(1)} digits`,
     implemented: true,
     difficulties: [
       { id: 'forward', label: s['digit-span'].ui.forward },

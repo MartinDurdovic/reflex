@@ -85,6 +85,16 @@ visibly breaks:
    across input types. Reaction results show the latency disclaimer footnote.
 9. UI chrome is locked (`body.game-locked`) during live trials so a fast first
    tap can't hit a nav link.
+10. **Fair comparison / honest rating.** A score is only ever compared against
+    attempts of the same difficulty (rotation cube-count, digit-span mode) or
+    the same MOT load. "New best" must *strictly beat* the previous best (a tie
+    isn't a new best) and best/average/"vs average" are computed against PRIOR
+    attempts so a result never inflates its own baseline. `renderResults` takes
+    `comparable` (a predicate) + `sessionSize` (how many valid attempts this
+    session appended) to enforce this.
+11. **No garbage-strategy scores.** Where a fast score is otherwise gameable,
+    validity gates reject it: go/no-go DNFs on too many false alarms;
+    sub-100ms "reactions" (F1, go/no-go) are anticipations, not reactions.
 
 ---
 
@@ -150,7 +160,10 @@ before lights-out = **JUMP START** → `valid:false`. Session = 5 starts, one
 stored attempt per start (`params.sessionId` groups them); results show session
 best / average / consistency (std dev) / jump starts. **No 3-2-1 countdown**
 (`countdown:false`) — the light sequence is the countdown. Score unit: ms,
-lower better.
+lower better. A "reaction" faster than **100ms** (`ANTICIPATION_FLOOR_MS`) is
+physiologically impossible → recorded as a false start (`valid:false`,
+`params.reason:'anticipated'`, shown "TOO SOON"), so anticipation can't post a
+fake sub-100ms best.
 
 ### 02 · Ball Tracking (`mot`)
 Pylyshyn MOT. Phases: reveal (targets solid amber + glow, big on-screen
@@ -164,19 +177,27 @@ persisted in settings key `mot.config`:
 - balls to track 1–floor(total/2) (dynamicMax; default 3)
 - *advanced:* speed 1–10 (default 4), size 1–10 (default 5),
   tracking time 5–600s (default 8), start countdown 0.5–5s step 0.5 (default 2)
-Score = accuracy % (correct/K). Old attempts from the removed staircase system
-(score = level) still sit in some users' history — known cosmetic wart.
+Score = accuracy % (correct/K). Ball geometry rescales on window resize /
+orientation change so tap hit-testing stays aligned mid-round. **Ratings are
+stratified by tracking load**: best/average/history (results, intro strip, stats)
+only compare attempts with the same `params.balls`+`params.targets`. This also
+excludes the legacy staircase-era attempts (score = level, no `balls` param) from
+every %-based stat — they're hidden from comparisons, not deleted.
 
 ### 03 · Go / No-Go (`go-nogo`)
 30 stimuli (22 go green / 8 no-go red, Fisher-Yates), ISI 800–2500ms, 800ms
 response window; tap-vs-timeout races settled by a per-stimulus `resolved`
-flag. Records avg RT (score, ms), false alarms, misses, premature taps. Zero
-hits → DNF.
+flag. Records avg RT (score, ms), false alarms, misses, premature taps,
+anticipations. Sub-100ms go-taps are anticipations (excluded from the RT
+average, not scored). **Validity gate:** the attempt is a DNF unless there was
+≥1 real hit AND false alarms ≤ half the no-go trials — so tapping through every
+stimulus (no inhibition) can't post a great avg-RT score.
 
 ### 04 · Digit Span (`digit-span`)
 800ms on / 200ms off, no immediate repeats, on-screen numpad only. Start at 4;
 +1 per success; one retry per length (fresh sequence); second miss ends round.
 Modes: forward / reverse (difficulty selector). Score = longest correct span.
+Forward and reverse are rated separately (comparisons stratified by mode).
 
 ### 05 · Mental Rotation (`rotation`)
 Shepard-Metzler with **static views** (user's explicit choice — no spinning, no
@@ -187,7 +208,10 @@ distinguishable (`polycube.ts`, unit-tested). Right view = same shape (50%) or
 mirrored (50%); both get random orientations chosen by sampling 120 quaternions
 and scoring occlusion (`viewScore`) so **every cube is visible from one POV**.
 Answers: **SAME / DIFFERENT**. 10 trials; difficulties: 7/10/13 cubes, time
-limit none/15s/8s (simulated time). Score = accuracy %.
+limit none/15s/8s (simulated time). Score = accuracy %. Answer buttons are
+disabled until the first trial is on screen (a tap during the 3-2-1 countdown
+used to bank a phantom correct answer → 11/10). Each cube-count is rated
+separately (comparisons stratified by difficulty).
 
 ---
 
@@ -276,8 +300,9 @@ import compat); import merges + dedupes by timestamp.
 - Settings page is the plainest room in the house.
 - Results screen could take one more identity moment (tick-ruler under readout).
 - Optional sound feedback (off by default) was in the original spec — never built.
-- Old staircase-era MOT attempts (score = level 1–n) mixed into % history —
-  could offer a one-time cleanup.
+- Old staircase-era MOT attempts (score = level 1–n) are now hidden from all
+  %-based stats/comparisons (filtered on missing `params.balls`), but still sit
+  in storage — a one-time hard cleanup in Settings is still a candidate.
 - Manifest locks `orientation: portrait`; rotation game would enjoy landscape.
 
 **Known environment notes:**

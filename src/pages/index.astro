@@ -74,7 +74,13 @@ import { strings } from '../lib/strings';
         const attempts = lists[i]!;
         const row = document.querySelector(`[data-test-card="${g.id}"]`);
         if (!row) return;
-        const sum = summarize(attempts, g.lowerIsBetter);
+        // drop legacy staircase MOT rows (score = level, no `balls` param)
+        // so they don't distort the accuracy-% best / sparkline
+        const rows =
+          g.id === 'mot'
+            ? attempts.filter((a) => typeof a.params?.balls === 'number')
+            : attempts;
+        const sum = summarize(rows, g.lowerIsBetter);
         if (sum.best !== null) {
           row.querySelector('[data-best]')!.textContent = g.formatScore(sum.best);
         }
@@ -83,7 +89,7 @@ import { strings } from '../lib/strings';
             sum.last.timestamp
           ).toLocaleDateString();
         }
-        const recent = attempts.filter((a) => a.valid).slice(-10).map((a) => a.score);
+        const recent = rows.filter((a) => a.valid).slice(-10).map((a) => a.score);
         if (recent.length > 1) {
           row.querySelector('[data-spark]')!.innerHTML = sparklineSvg(recent, 76, 24);
         }
